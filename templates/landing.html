@@ -100,4 +100,59 @@
     </div>
 </section>
 
+<div id="videoModal" class="video-modal video-modal-hidden">
+    <div class="video-modal-overlay"></div>
+    <div class="video-modal-content">
+        <div class="video-modal-header">
+            <button class="video-modal-close" aria-label="Close modal">&times;</button>
+        </div>
+        <div class="video-modal-body">
+            <iframe
+                id="demoVideo"
+                src=""
+                title="Spendly Demo Video"
+                frameborder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowfullscreen
+                loading="lazy">
+            </iframe>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+    const modal = document.getElementById('videoModal');
+    const videoFrame = document.getElementById('demoVideo');
+    const closeBtn = document.querySelector('.video-modal-close');
+    const overlay = document.querySelector('.video-modal-overlay');
+
+    const videoUrl = 'https://www.youtube.com/embed/dQw4w9WgXcQ';
+
+    const seeHowBtn = Array.from(document.querySelectorAll('.hero-actions a')).find(
+        btn => btn.textContent.includes('See how it works')
+    );
+
+    function openModal(e) {
+        e.preventDefault();
+        videoFrame.src = videoUrl;
+        modal.classList.remove('video-modal-hidden');
+    }
+
+    function closeModal() {
+        modal.classList.add('video-modal-hidden');
+        videoFrame.src = '';
+    }
+
+    if (seeHowBtn) {
+        seeHowBtn.addEventListener('click', openModal);
+    }
+
+    closeBtn.addEventListener('click', closeModal);
+    overlay.addEventListener('click', closeModal);
+})();
+</script>
 {% endblock %}
