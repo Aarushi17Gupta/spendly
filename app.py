@@ -1,8 +1,11 @@
-from flask import Flask, render_template
+import os
 
-from database.db import get_db, init_db, seed_db
+from flask import Flask, flash, redirect, render_template, request, url_for
+
+from database.db import create_user, get_db, get_user_by_email, init_db, seed_db
 
 app = Flask(__name__)
+app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret')
 
 with app.app_context():
     init_db()
@@ -18,8 +21,30 @@ def landing():
     return render_template("landing.html")
 
 
-@app.route("/register")
+@app.route("/register", methods=["GET", "POST"])
 def register():
+    if request.method == "POST":
+        name = request.form.get("name", "").strip()
+        email = request.form.get("email", "").strip()
+        password = request.form.get("password", "").strip()
+        confirm_password = request.form.get("confirm_password", "").strip()
+
+        if not all([name, email, password, confirm_password]):
+            flash("All fields are required.", "error")
+            return render_template("register.html")
+
+        if password != confirm_password:
+            flash("Passwords do not match.", "error")
+            return render_template("register.html")
+
+        if get_user_by_email(email):
+            flash("An account with that email already exists.", "error")
+            return render_template("register.html")
+
+        create_user(name, email, password)
+        flash("Account created! Please sign in.", "success")
+        return redirect(url_for("login"))
+
     return render_template("register.html")
 
 
