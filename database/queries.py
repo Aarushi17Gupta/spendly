@@ -23,15 +23,22 @@ def get_user_by_id(user_id):
 # SA2: Summary stats                                                  #
 # ------------------------------------------------------------------ #
 
-def get_summary_stats(user_id):
+def get_summary_stats(user_id, date_from=None, date_to=None):
+    where, params = "WHERE user_id = ?", [user_id]
+    if date_from:
+        where += " AND date >= ?"
+        params.append(date_from)
+    if date_to:
+        where += " AND date <= ?"
+        params.append(date_to)
     conn = get_db()
     row = conn.execute(
         "SELECT COALESCE(SUM(amount), 0) AS total_spent, COUNT(*) AS transaction_count "
-        "FROM expenses WHERE user_id = ?", (user_id,)
+        "FROM expenses " + where, params
     ).fetchone()
     top = conn.execute(
-        "SELECT category FROM expenses WHERE user_id = ? "
-        "GROUP BY category ORDER BY SUM(amount) DESC LIMIT 1", (user_id,)
+        "SELECT category FROM expenses " + where +
+        " GROUP BY category ORDER BY SUM(amount) DESC LIMIT 1", params
     ).fetchone()
     conn.close()
     return {
@@ -45,12 +52,20 @@ def get_summary_stats(user_id):
 # SA1: Transaction history                                            #
 # ------------------------------------------------------------------ #
 
-def get_recent_transactions(user_id, limit=10):
+def get_recent_transactions(user_id, limit=10, date_from=None, date_to=None):
+    where, params = "WHERE user_id = ?", [user_id]
+    if date_from:
+        where += " AND date >= ?"
+        params.append(date_from)
+    if date_to:
+        where += " AND date <= ?"
+        params.append(date_to)
+    params.append(limit)
     conn = get_db()
     rows = conn.execute(
         "SELECT date, description, category, amount "
-        "FROM expenses WHERE user_id = ? ORDER BY date DESC LIMIT ?",
-        (user_id, limit),
+        "FROM expenses " + where + " ORDER BY date DESC LIMIT ?",
+        params,
     ).fetchall()
     conn.close()
     result = []
@@ -69,12 +84,19 @@ def get_recent_transactions(user_id, limit=10):
 # SA3: Category breakdown                                             #
 # ------------------------------------------------------------------ #
 
-def get_category_breakdown(user_id):
+def get_category_breakdown(user_id, date_from=None, date_to=None):
+    where, params = "WHERE user_id = ?", [user_id]
+    if date_from:
+        where += " AND date >= ?"
+        params.append(date_from)
+    if date_to:
+        where += " AND date <= ?"
+        params.append(date_to)
     conn = get_db()
     rows = conn.execute(
         "SELECT category AS name, SUM(amount) AS amount "
-        "FROM expenses WHERE user_id = ? GROUP BY category ORDER BY amount DESC",
-        (user_id,),
+        "FROM expenses " + where + " GROUP BY category ORDER BY amount DESC",
+        params,
     ).fetchall()
     conn.close()
     if not rows:
