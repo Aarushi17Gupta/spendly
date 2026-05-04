@@ -1,3 +1,4 @@
+import datetime
 import os
 
 from flask import Flask, flash, redirect, render_template, request, session, url_for
@@ -12,6 +13,20 @@ app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret')
 with app.app_context():
     init_db()
     seed_db()
+
+
+# ------------------------------------------------------------------ #
+# Helpers                                                             #
+# ------------------------------------------------------------------ #
+
+def _valid_date(s):
+    if not s:
+        return None
+    try:
+        datetime.date.fromisoformat(s)
+        return s
+    except ValueError:
+        return None
 
 
 # ------------------------------------------------------------------ #
@@ -105,6 +120,8 @@ def profile():
         return redirect(url_for("login"))
 
     user_id = session["user_id"]
+    date_from = _valid_date(request.args.get("from"))
+    date_to = _valid_date(request.args.get("to"))
 
     # ---- SA2: user dict ------------------------------------------ #
     user_row = get_user_by_id(user_id)
@@ -116,20 +133,21 @@ def profile():
     # ---- end SA2 ------------------------------------------------- #
 
     # ---- SA2: stats dict ----------------------------------------- #
-    stats = get_summary_stats(user_id)
+    stats = get_summary_stats(user_id, date_from=date_from, date_to=date_to)
     # ---- end SA2 ------------------------------------------------- #
 
     # ---- SA1: transactions list ----------------------------------- #
-    transactions = get_recent_transactions(user_id)
+    transactions = get_recent_transactions(user_id, date_from=date_from, date_to=date_to)
     # ---- end SA1 ------------------------------------------------- #
 
     # ---- SA3: categories list ------------------------------------ #
-    categories = get_category_breakdown(user_id)
+    categories = get_category_breakdown(user_id, date_from=date_from, date_to=date_to)
     # ---- end SA3 ------------------------------------------------- #
 
     return render_template("profile.html",
                            user=user, stats=stats,
-                           transactions=transactions, categories=categories)
+                           transactions=transactions, categories=categories,
+                           date_from=date_from, date_to=date_to)
 
 
 @app.route("/expenses/add")
