@@ -3,7 +3,8 @@ import os
 from flask import Flask, flash, redirect, render_template, request, session, url_for
 from werkzeug.security import check_password_hash
 
-from database.db import create_user, get_db, get_user_by_email, get_user_by_id, init_db, seed_db
+from database.db import create_user, get_db, get_user_by_email, init_db, seed_db
+from database.queries import get_user_by_id, get_summary_stats, get_recent_transactions, get_category_breakdown
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret')
@@ -103,36 +104,29 @@ def profile():
     if not session.get("user_id"):
         return redirect(url_for("login"))
 
-    user = {
-        "name": "Alex Morgan",
-        "email": "alex@example.com",
-        "member_since": "January 2024",
-        "initials": "AM",
-    }
-    stats = {
-        "total_spent": 321.00,
-        "transaction_count": 8,
-        "top_category": "Bills",
-    }
-    transactions = [
-        {"date": "May 20, 2026", "description": "Miscellaneous",     "category": "Other",         "amount": 25.00},
-        {"date": "May 17, 2026", "description": "Coffee and snacks", "category": "Food",          "amount": 8.50},
-        {"date": "May 13, 2026", "description": "New shoes",         "category": "Shopping",      "amount": 65.00},
-        {"date": "May 10, 2026", "description": "Movie ticket",      "category": "Entertainment", "amount": 15.00},
-        {"date": "May 08, 2026", "description": "Vitamins",          "category": "Health",        "amount": 30.00},
-        {"date": "May 05, 2026", "description": "Electric bill",     "category": "Bills",         "amount": 120.00},
-        {"date": "May 03, 2026", "description": "Bus pass",          "category": "Transport",     "amount": 12.00},
-        {"date": "May 01, 2026", "description": "Grocery shopping",  "category": "Food",          "amount": 45.50},
-    ]
-    categories = [
-        {"name": "Bills",         "total": 120.00, "pct": 37},
-        {"name": "Shopping",      "total": 65.00,  "pct": 20},
-        {"name": "Food",          "total": 54.00,  "pct": 17},
-        {"name": "Other",         "total": 25.00,  "pct": 8},
-        {"name": "Health",        "total": 30.00,  "pct": 9},
-        {"name": "Entertainment", "total": 15.00,  "pct": 5},
-        {"name": "Transport",     "total": 12.00,  "pct": 4},
-    ]
+    user_id = session["user_id"]
+
+    # ---- SA2: user dict ------------------------------------------ #
+    user_row = get_user_by_id(user_id)
+    if user_row is None:
+        session.clear()
+        return redirect(url_for("login"))
+    initials = "".join(w[0].upper() for w in user_row["name"].split())[:2]
+    user = {**user_row, "initials": initials}
+    # ---- end SA2 ------------------------------------------------- #
+
+    # ---- SA2: stats dict ----------------------------------------- #
+    stats = get_summary_stats(user_id)
+    # ---- end SA2 ------------------------------------------------- #
+
+    # ---- SA1: transactions list ----------------------------------- #
+    transactions = get_recent_transactions(user_id)
+    # ---- end SA1 ------------------------------------------------- #
+
+    # ---- SA3: categories list ------------------------------------ #
+    categories = get_category_breakdown(user_id)
+    # ---- end SA3 ------------------------------------------------- #
+
     return render_template("profile.html",
                            user=user, stats=stats,
                            transactions=transactions, categories=categories)
