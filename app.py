@@ -4,8 +4,10 @@ import os
 from flask import Flask, flash, redirect, render_template, request, session, url_for
 from werkzeug.security import check_password_hash
 
-from database.db import create_user, get_db, get_user_by_email, init_db, seed_db
+from database.db import add_expense as db_add_expense, create_user, get_db, get_user_by_email, init_db, seed_db
 from database.queries import get_user_by_id, get_summary_stats, get_recent_transactions, get_category_breakdown
+
+CATEGORIES = ["Food", "Transport", "Bills", "Health", "Entertainment", "Shopping", "Other"]
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret')
@@ -150,9 +152,46 @@ def profile():
                            date_from=date_from, date_to=date_to)
 
 
-@app.route("/expenses/add")
+@app.route("/analytics")
+def analytics():
+    if not session.get("user_id"):
+        return redirect(url_for("login"))
+    return render_template("analytics.html")
+
+
+@app.route("/expenses/add", methods=["GET", "POST"])
 def add_expense():
-    return "Add expense — coming in Step 7"
+    if not session.get("user_id"):
+        return redirect(url_for("login"))
+
+    if request.method == "POST":
+        amount_raw = request.form.get("amount", "").strip()
+        category = request.form.get("category", "").strip()
+        date_raw = request.form.get("date", "").strip()
+        description = request.form.get("description", "").strip() or None
+        form = dict(amount=amount_raw, category=category, date=date_raw, description=description or "")
+
+        try:
+            amount = float(amount_raw)
+            if amount <= 0:
+                raise ValueError
+        except ValueError:
+            flash("Amount must be a positive number.", "error")
+            return render_template("add_expense.html", categories=CATEGORIES, form=form)
+
+        if category not in CATEGORIES:
+            flash("Please select a valid category.", "error")
+            return render_template("add_expense.html", categories=CATEGORIES, form=form)
+
+        if not _valid_date(date_raw):
+            flash("Date must be a valid date (YYYY-MM-DD).", "error")
+            return render_template("add_expense.html", categories=CATEGORIES, form=form)
+
+        db_add_expense(session["user_id"], amount, category, date_raw, description)
+        flash("Expense added successfully.", "success")
+        return redirect(url_for("profile"))
+
+    return render_template("add_expense.html", categories=CATEGORIES, form={})
 
 
 @app.route("/expenses/<int:id>/edit")

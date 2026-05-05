@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+
+{% block title %}Analytics — Spendly{% endblock %}
+
+{% block content %}
+
+<div class="analytics-container">
+    <div class="analytics-inner">
+        <div class="coming-soon-content">
+            <div class="coming-soon-icon">📊</div>
+            <h1 class="coming-soon-title">Analytics Coming Soon</h1>
+            <p class="coming-soon-subtitle">
+                Get deeper insights into your spending patterns with beautiful charts, trends, and detailed breakdowns.
+            </p>
+
+            <div class="features-preview">
+                <div class="feature-item">
+                    <span class="feature-icon">📈</span>
+                    <h3>Spending Trends</h3>
+                    <p>Track how your spending changes over time</p>
+                </div>
+                <div class="feature-item">
+                    <span class="feature-icon">🎯</span>
+                    <h3>Budget Goals</h3>
+                    <p>Set and monitor spending targets by category</p>
+                </div>
+                <div class="feature-item">
+                    <span class="feature-icon">💡</span>
+                    <h3>Smart Insights</h3>
+                    <p>Get personalized recommendations to save more</p>
+                </div>
+                <div class="feature-item">
+                    <span class="feature-icon">📋</span>
+                    <h3>Detailed Reports</h3>
+                    <p>Export comprehensive spending reports</p>
+                </div>
+            </div>
+
+            <p class="coming-soon-text">
+                We're working hard to bring you powerful analytics to help you understand your finances better.
+            </p>
+        </div>
+    </div>
+</div>
+
+<style>
+    .analytics-container {
+        padding: 3rem 2rem;
+        min-height: calc(100vh - 60px - 100px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .analytics-inner {
+        max-width: 600px;
+        width: 100%;
+        text-align: center;
+    }
+
+    .coming-soon-content {
+        background: var(--paper-card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        padding: 3rem 2rem;
+    }
+
+    .coming-soon-icon {
+        font-size: 4rem;
+        margin-bottom: 1.5rem;
+        display: block;
+    }
+
+    .coming-soon-title {
+        font-family: var(--font-display);
+        font-size: 2rem;
+        color: var(--ink);
+        margin-bottom: 1rem;
+        line-height: 1.2;
+    }
+
+    .coming-soon-subtitle {
+        font-size: 1.05rem;
+        color: var(--ink-muted);
+        margin-bottom: 2.5rem;
+        line-height: 1.6;
+    }
+
+    .features-preview {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.5rem;
+        margin-bottom: 2.5rem;
+        text-align: left;
+    }
+
+    .feature-item {
+        padding: 1.5rem;
+        background: var(--accent-light);
+        border-radius: var(--radius-md);
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .feature-item:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+    }
+
+    .feature-icon {
+        font-size: 1.75rem;
+        display: block;
+        margin-bottom: 0.5rem;
+    }
+
+    .feature-item h3 {
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: var(--ink);
+        margin-bottom: 0.5rem;
+    }
+
+    .feature-item p {
+        font-size: 0.85rem;
+        color: var(--ink-muted);
+        line-height: 1.5;
+    }
+
+    .coming-soon-text {
+        font-size: 0.95rem;
+        color: var(--ink-muted);
+    }
+
+    @media (max-width: 640px) {
+        .features-preview {
+            grid-template-columns: 1fr;
+        }
+
+        .coming-soon-title {
+            font-size: 1.6rem;
+        }
+
+        .coming-soon-content {
+            padding: 2rem 1.5rem;
+        }
+    }
+</style>
+
+{% endblock %}
