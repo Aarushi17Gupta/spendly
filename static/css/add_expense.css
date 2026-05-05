@@ -1,0 +1,62 @@
+/* ------------------------------------------------------------------ */
+/* Add Expense page                                                    */
+/* ------------------------------------------------------------------ */
+
+.add-expense-section {
+    min-height: calc(100vh - 64px);
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 3rem 1rem;
+    background: var(--paper);
+}
+
+.add-expense-container {
+    width: 100%;
+    max-width: var(--auth-width);
+}
+
+.add-expense-header {
+    text-align: center;
+    margin-bottom: 1.5rem;
+}
+
+.add-expense-title {
+    font-family: var(--font-display);
+    font-size: 2rem;
+    color: var(--ink);
+    margin-bottom: 0.25rem;
+}
+
+.add-expense-subtitle {
+    color: var(--ink-muted);
+    font-size: 0.95rem;
+}
+
+.add-expense-card {
+    background: var(--paper-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 2rem;
+}
+
+.label-optional {
+    font-size: 0.8rem;
+    color: var(--ink-faint);
+    font-weight: 400;
+}
+
+.add-expense-switch {
+    text-align: center;
+    margin-top: 1.25rem;
+    font-size: 0.9rem;
+    color: var(--ink-muted);
+}
+
+.add-expense-switch a {
+    color: var(--accent);
+}
+
+.add-expense-switch a:hover {
+    text-decoration: underline;
+}
