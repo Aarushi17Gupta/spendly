@@ -72,6 +72,7 @@ def get_recent_transactions(user_id, limit=10, date_from=None, date_to=None):
     for row in rows:
         dt = datetime.datetime.strptime(row["date"], "%Y-%m-%d")
         result.append({
+            "date_iso": row["date"],
             "date": dt.strftime("%B %-d, %Y"),
             "description": row["description"] or "",
             "category": row["category"],
