@@ -22,10 +22,24 @@
     display: flex;
     justify-content: center;
     width: 100%;
-    max-width: 760px;
+    max-width: 920px;
+}
+
+.hero-title {
+    font-family: var(--font-body);
+    font-weight: 500;
+    font-size: clamp(2.75rem, 6vw, 4.25rem);
+    letter-spacing: -0.035em;
+    line-height: 1.1;
+}
+
+.hero-title em {
+    font-style: normal;
+    color: #4a9a72;
 }
 
 .hero-subtitle {
+    font-size: 1.2rem;
     max-width: 500px;
     margin-left: auto;
     margin-right: auto;
@@ -34,6 +48,14 @@
 
 .hero-actions {
     justify-content: center;
+    gap: 1.25rem;
+}
+
+.hero-actions .btn-primary {
+    padding: 1rem 2.25rem;
+    border-radius: 10px;
+    font-size: 1.05rem;
+    font-weight: 600;
 }
 
 /* ------------------------------------------------------------------ */
@@ -43,7 +65,12 @@
 .hero-badge {
     text-transform: none;
     letter-spacing: 0.01em;
-    font-size: 0.85rem;
+    font-size: 0.95rem;
+    font-weight: 500;
+    background: #e6f3ec;
+    color: #2f6b4a;
+    border: 1px solid #b9dcc8;
+    padding: 0.4rem 1.1rem;
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
@@ -53,7 +80,7 @@
     width: 8px;
     height: 8px;
     border-radius: 50%;
-    background: var(--accent);
+    background: #4a9a72;
     flex-shrink: 0;
 }
 
@@ -62,13 +89,13 @@
 /* ------------------------------------------------------------------ */
 
 .mock-card {
-    background: #f2f0ed;
+    background: var(--paper);
     border: 1px solid var(--border);
-    border-radius: 14px;
+    border-radius: 16px;
     padding: 1.25rem 1.5rem 1.5rem;
     width: 100%;
-    max-width: 760px;
-    box-shadow: 0 8px 40px rgba(0,0,0,0.06);
+    max-width: 920px;
+    box-shadow: none;
 }
 
 .mock-card-dots {
@@ -83,9 +110,9 @@
     border-radius: 50%;
 }
 
-.dot-red    { background: #ef4444; }
-.dot-orange { background: #f97316; }
-.dot-teal   { background: #14b8a6; }
+.dot-red    { background: #e89a9a; }
+.dot-orange { background: #f2c66d; }
+.dot-teal   { background: #a8dcc4; }
 
 /* ------------------------------------------------------------------ */
 /* Stat cards                                                          */
@@ -103,7 +130,7 @@
 .mock-stat {
     background: var(--paper-card);
     border: 1px solid var(--border);
-    border-radius: 10px;
+    border-radius: 12px;
     padding: 1rem 1.25rem 1.25rem;
     display: flex;
     flex-direction: column;
@@ -112,7 +139,7 @@
 }
 
 .stat-label {
-    font-size: 0.78rem;
+    font-size: 0.9rem;
     color: var(--ink-muted);
     font-weight: 400;
     text-transform: none;
@@ -121,19 +148,19 @@
 
 .stat-amount {
     font-family: var(--font-body);
-    font-size: 1.7rem;
-    font-weight: 700;
+    font-size: 1.9rem;
+    font-weight: 600;
     color: var(--ink);
-    letter-spacing: -0.03em;
+    letter-spacing: -0.02em;
 }
 
 .stat-change {
-    font-size: 0.8rem;
+    font-size: 0.9rem;
     color: var(--ink-muted);
 }
 
-.change-positive { color: #ef4444; }
-.change-success  { color: var(--accent); }
+.change-positive { color: #d64545; }
+.change-success  { color: #3f8f63; }
 
 /* ------------------------------------------------------------------ */
 /* Category bars                                                       */
@@ -142,11 +169,11 @@
 .mock-categories {
     background: var(--paper-card);
     border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 1.25rem 1.25rem;
+    border-radius: 12px;
+    padding: 1.1rem 1.25rem;
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    gap: 0.6rem;
     text-align: left;
 }
 
@@ -157,16 +184,17 @@
 }
 
 .cat-name {
-    font-size: 0.875rem;
+    font-size: 0.95rem;
     color: var(--ink-soft);
-    font-weight: 500;
-    min-width: 54px;
+    font-weight: 400;
+    min-width: 70px;
+    text-align: center;
 }
 
 .cat-bar-track {
     flex: 1;
-    height: 8px;
-    background: #e8e6e1;
+    height: 10px;
+    background: #efede8;
     border-radius: 999px;
     overflow: hidden;
 }
@@ -176,9 +204,9 @@
     border-radius: 999px;
 }
 
-.cat-bar-food   { background: #e09b2d; }
-.cat-bar-travel { background: #3b82f6; }
-.cat-bar-bills  { background: #7c6fcd; }
+.cat-bar-food   { background: #e5a443; }
+.cat-bar-travel { background: #4a86d6; }
+.cat-bar-bills  { background: #7d74d0; }
 
 /* ------------------------------------------------------------------ */
 /* Responsive                                                          */
