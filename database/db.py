@@ -1,5 +1,7 @@
+import datetime
 import os
 import sqlite3
+from contextlib import closing
 
 from werkzeug.security import generate_password_hash
 
@@ -14,96 +16,86 @@ def get_db():
 
 
 def init_db():
-    conn = get_db()
-    conn.executescript("""
-        CREATE TABLE IF NOT EXISTS users (
-            id            INTEGER PRIMARY KEY AUTOINCREMENT,
-            name          TEXT    NOT NULL,
-            email         TEXT    UNIQUE NOT NULL,
-            password_hash TEXT    NOT NULL,
-            created_at    TEXT    DEFAULT (datetime('now'))
-        );
+    with closing(get_db()) as conn:
+        conn.executescript("""
+            CREATE TABLE IF NOT EXISTS users (
+                id            INTEGER PRIMARY KEY AUTOINCREMENT,
+                name          TEXT    NOT NULL,
+                email         TEXT    UNIQUE NOT NULL,
+                password_hash TEXT    NOT NULL,
+                created_at    TEXT    DEFAULT (datetime('now'))
+            );
 
-        CREATE TABLE IF NOT EXISTS expenses (
-            id          INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id     INTEGER NOT NULL,
-            amount      REAL    NOT NULL,
-            category    TEXT    NOT NULL,
-            date        TEXT    NOT NULL,
-            description TEXT,
-            created_at  TEXT    DEFAULT (datetime('now')),
-            FOREIGN KEY (user_id) REFERENCES users(id)
-        );
-    """)
-    conn.commit()
-    conn.close()
+            CREATE TABLE IF NOT EXISTS expenses (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id     INTEGER NOT NULL,
+                amount      REAL    NOT NULL,
+                category    TEXT    NOT NULL,
+                date        TEXT    NOT NULL,
+                description TEXT,
+                created_at  TEXT    DEFAULT (datetime('now')),
+                FOREIGN KEY (user_id) REFERENCES users(id)
+            );
+        """)
 
 
 def get_user_by_email(email):
-    conn = get_db()
-    user = conn.execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
-    conn.close()
-    return user
+    with closing(get_db()) as conn:
+        return conn.execute(
+            "SELECT * FROM users WHERE email = ?", (email,)
+        ).fetchone()
 
 
 def get_user_by_id(user_id):
-    conn = get_db()
-    user = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
-    conn.close()
-    return user
+    with closing(get_db()) as conn:
+        return conn.execute(
+            "SELECT * FROM users WHERE id = ?", (user_id,)
+        ).fetchone()
 
 
 def create_user(name, email, password):
     password_hash = generate_password_hash(password)
-    conn = get_db()
-    conn.execute(
-        "INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)",
-        (name, email, password_hash),
-    )
-    conn.commit()
-    conn.close()
+    with closing(get_db()) as conn, conn:
+        conn.execute(
+            "INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)",
+            (name, email, password_hash),
+        )
 
 
 def add_expense(user_id, amount, category, date, description=None):
-    conn = get_db()
-    conn.execute(
-        "INSERT INTO expenses (user_id, amount, category, date, description) VALUES (?, ?, ?, ?, ?)",
-        (user_id, amount, category, date, description),
-    )
-    conn.commit()
-    conn.close()
+    with closing(get_db()) as conn, conn:
+        conn.execute(
+            "INSERT INTO expenses (user_id, amount, category, date, description) VALUES (?, ?, ?, ?, ?)",
+            (user_id, amount, category, date, description),
+        )
 
 
 def seed_db():
-    conn = get_db()
-    count = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
-    if count > 0:
-        conn.close()
-        return
+    with closing(get_db()) as conn, conn:
+        if conn.execute("SELECT COUNT(*) FROM users").fetchone()[0] > 0:
+            return
 
-    conn.execute(
-        "INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)",
-        ("Demo User", "demo@spendly.com", generate_password_hash("demo123")),
-    )
-    conn.commit()
+        user_id = conn.execute(
+            "INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)",
+            ("Demo User", "demo@spendly.com", generate_password_hash("demo123")),
+        ).lastrowid
 
-    user_id = conn.execute(
-        "SELECT id FROM users WHERE email = ?", ("demo@spendly.com",)
-    ).fetchone()[0]
-
-    expenses = [
-        (user_id, 45.50,  "Food",          "2026-05-01", "Grocery shopping"),
-        (user_id, 12.00,  "Transport",     "2026-05-03", "Bus pass"),
-        (user_id, 120.00, "Bills",         "2026-05-05", "Electric bill"),
-        (user_id, 30.00,  "Health",        "2026-05-08", "Vitamins"),
-        (user_id, 15.00,  "Entertainment", "2026-05-10", "Movie ticket"),
-        (user_id, 65.00,  "Shopping",      "2026-05-13", "New shoes"),
-        (user_id, 8.50,   "Food",          "2026-05-17", "Coffee and snacks"),
-        (user_id, 25.00,  "Other",         "2026-05-20", "Miscellaneous"),
-    ]
-    conn.executemany(
-        "INSERT INTO expenses (user_id, amount, category, date, description) VALUES (?, ?, ?, ?, ?)",
-        expenses,
-    )
-    conn.commit()
-    conn.close()
+        # All days are <= 28, so they exist in every month.
+        sample_expenses = [
+            (45.50,  "Food",          1,  "Grocery shopping"),
+            (12.00,  "Transport",     3,  "Bus pass"),
+            (120.00, "Bills",         5,  "Electric bill"),
+            (30.00,  "Health",        8,  "Vitamins"),
+            (15.00,  "Entertainment", 10, "Movie ticket"),
+            (65.00,  "Shopping",      13, "New shoes"),
+            (8.50,   "Food",          17, "Coffee and snacks"),
+            (25.00,  "Other",         20, "Miscellaneous"),
+        ]
+        today = datetime.date.today()
+        conn.executemany(
+            "INSERT INTO expenses (user_id, amount, category, date, description) VALUES (?, ?, ?, ?, ?)",
+            [
+                (user_id, amount, category, today.replace(day=day).isoformat(), description)
+                for amount, category, day, description in sample_expenses
+            ],
+        )
