@@ -2,6 +2,10 @@
 
 {% block title %}Privacy Policy — Spendly{% endblock %}
 
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/terms.css') }}">
+{% endblock %}
+
 {% block content %}
 
 <section class="terms-section">
@@ -91,88 +95,4 @@
     </div>
 </section>
 
-{% endblock %}
-
-{% block head %}
-<style>
-    .terms-section {
-        padding: 4rem 2rem;
-        max-width: var(--max-width);
-        margin: 0 auto;
-    }
-
-    .terms-header {
-        text-align: center;
-        margin-bottom: 3rem;
-        padding-bottom: 2rem;
-        border-bottom: 1px solid var(--border);
-    }
-
-    .terms-header h1 {
-        font-family: var(--font-display);
-        font-size: clamp(2rem, 4vw, 3rem);
-        color: var(--ink);
-        margin-bottom: 0.5rem;
-    }
-
-    .terms-updated {
-        font-size: 0.9rem;
-        color: var(--ink-muted);
-    }
-
-    .terms-content {
-        background: var(--paper-card);
-        border: 1px solid var(--border);
-        border-radius: var(--radius-md);
-        padding: 2.5rem;
-        line-height: 1.8;
-    }
-
-    .terms-content h2 {
-        font-family: var(--font-display);
-        font-size: 1.3rem;
-        color: var(--ink);
-        margin-top: 2rem;
-        margin-bottom: 1rem;
-        padding-bottom: 0.5rem;
-        border-bottom: 1px solid var(--border-soft);
-    }
-
-    .terms-content h2:first-child {
-        margin-top: 0;
-    }
-
-    .terms-content p {
-        color: var(--ink-soft);
-        margin-bottom: 1.25rem;
-    }
-
-    .terms-content ul {
-        margin-left: 1.5rem;
-        margin-bottom: 1.25rem;
-        color: var(--ink-soft);
-    }
-
-    .terms-content li {
-        margin-bottom: 0.6rem;
-    }
-
-    @media (max-width: 768px) {
-        .terms-section {
-            padding: 2rem 1rem;
-        }
-
-        .terms-content {
-            padding: 1.5rem;
-        }
-
-        .terms-header h1 {
-            font-size: 1.75rem;
-        }
-
-        .terms-content h2 {
-            font-size: 1.1rem;
-        }
-    }
-</style>
 {% endblock %}
