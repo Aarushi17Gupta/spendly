@@ -5,6 +5,7 @@ from flask import Flask, flash, redirect, render_template, request, session, url
 from werkzeug.security import check_password_hash
 
 from database.db import add_expense as db_add_expense, create_user, get_db, get_user_by_email, init_db, seed_db
+from database.db import get_user_by_id as db_get_user_by_id
 from database.queries import get_user_by_id, get_summary_stats, get_recent_transactions, get_category_breakdown
 
 CATEGORIES = ["Food", "Transport", "Bills", "Health", "Entertainment", "Shopping", "Other"]
@@ -31,8 +32,28 @@ def _valid_date(s):
         return None
 
 
+def _period_label(date_from, date_to):
+    def fmt(value):
+        day = datetime.date.fromisoformat(value)
+        return f"{day:%b} {day.day}, {day.year}"
+
+    if date_from and date_to:
+        return f"{fmt(date_from)} – {fmt(date_to)}"
+    if date_from:
+        return f"From {fmt(date_from)}"
+    if date_to:
+        return f"Until {fmt(date_to)}"
+    return "All time"
+
+
+@app.context_processor
+def inject_current_user():
+    user_id = session.get("user_id")
+    return {"current_user": db_get_user_by_id(user_id) if user_id else None}
+
+
 # ------------------------------------------------------------------ #
-# Routes                                                              #
+# Routes                                                             #
 # ------------------------------------------------------------------ #
 
 @app.route("/")
@@ -149,7 +170,8 @@ def profile():
     return render_template("profile.html",
                            user=user, stats=stats,
                            transactions=transactions, categories=categories,
-                           date_from=date_from, date_to=date_to)
+                           date_from=date_from, date_to=date_to,
+                           period_label=_period_label(date_from, date_to))
 
 
 @app.route("/analytics")
