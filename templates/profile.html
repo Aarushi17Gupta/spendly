@@ -74,6 +74,7 @@
                         <th scope="col" role="columnheader">Description</th>
                         <th scope="col" role="columnheader">Category</th>
                         <th scope="col" role="columnheader" class="col-amount">Amount</th>
+                        <th scope="col" role="columnheader">Edit</th>
                     </tr>
                 </thead>
                 <tbody role="rowgroup">
@@ -83,6 +84,7 @@
                         <td role="cell" class="tx-desc{% if not tx.description %} tx-desc--empty{% endif %}">{{ tx.description or 'No description' }}</td>
                         <td role="cell" class="tx-category"><span class="badge cat cat-{{ tx.category|lower }}"><span class="cat-dot"></span>{{ tx.category }}</span></td>
                         <td role="cell" class="tx-amount">{{ money(tx.amount) }}</td>
+                        <td role="cell" class="tx-action"><a class="tx-edit" href="{{ url_for('edit_expense', id=tx.id) }}" aria-label="Edit {{ tx.description or tx.category }}, {{ money(tx.amount) }}, {{ tx.date }}">Edit</a></td>
                     </tr>
                     {% endfor %}
                 </tbody>

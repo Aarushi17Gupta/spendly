@@ -66,6 +66,26 @@ def add_expense(user_id, amount, category, date, description=None):
         )
 
 
+def get_expense(expense_id, user_id):
+    """Return the expense if it belongs to the user, else None."""
+    with closing(get_db()) as conn:
+        return conn.execute(
+            "SELECT * FROM expenses WHERE id = ? AND user_id = ?",
+            (expense_id, user_id),
+        ).fetchone()
+
+
+def update_expense(expense_id, user_id, amount, category, date, description=None):
+    """Update a user's expense; return whether a row was matched."""
+    with closing(get_db()) as conn, conn:
+        cursor = conn.execute(
+            "UPDATE expenses SET amount = ?, category = ?, date = ?, description = ? "
+            "WHERE id = ? AND user_id = ?",
+            (amount, category, date, description, expense_id, user_id),
+        )
+        return cursor.rowcount > 0
+
+
 def seed_db():
     with closing(get_db()) as conn, conn:
         if conn.execute("SELECT COUNT(*) FROM users").fetchone()[0] > 0:
