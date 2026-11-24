@@ -40,8 +40,11 @@ No new dependencies.
 - Use CSS variables — never hardcode hex values
 - All templates extend `base.html`
 - Redirect unauthenticated users to `/login` — do not render the form
-- Amount must be a positive number; reject zero or negative values with a flash error
-- Date must be a valid ISO date string (`YYYY-MM-DD`); reject malformed dates
+- Amount must be a positive number; reject zero, negative, `nan` and infinite values with a flash error
+- Amount must be between 0.01 and 10,000,000 (₹1 crore)
+- Description must be 200 characters or fewer
+- A session whose user no longer exists is cleared and redirected to `/login`
+- Date must be a valid ISO date string (`YYYY-MM-DD`); reject malformed dates and other ISO forms such as `20260501`
 - Category must be one of the allowed values: Food, Transport, Bills, Health, Entertainment, Shopping, Other
 - On successful POST, redirect to `url_for('profile')` with a success flash message
 - On validation failure, re-render the form with the user's input preserved and a flash error
@@ -57,3 +60,6 @@ No new dependencies.
 - [ ] Submitting with an invalid category shows a flash error and re-renders the form
 - [ ] Description field is optional — form submits successfully when left blank
 - [ ] Previously entered values are preserved in the form after a validation failure
+- [ ] Submitting an amount outside 0.01–10,000,000 shows a flash error and saves nothing
+- [ ] Submitting a description over 200 characters shows a flash error and saves nothing
+- [ ] A session for a deleted user is cleared and redirected to `/login`
