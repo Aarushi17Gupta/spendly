@@ -36,6 +36,17 @@ def init_db():
                 created_at  TEXT    DEFAULT (datetime('now')),
                 FOREIGN KEY (user_id) REFERENCES users(id)
             );
+
+            CREATE TABLE IF NOT EXISTS credits (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id     INTEGER NOT NULL,
+                amount      REAL    NOT NULL,
+                source      TEXT    NOT NULL,
+                date        TEXT    NOT NULL,
+                description TEXT,
+                created_at  TEXT    DEFAULT (datetime('now')),
+                FOREIGN KEY (user_id) REFERENCES users(id)
+            );
         """)
 
 
@@ -92,6 +103,44 @@ def delete_expense(expense_id, user_id):
         cursor = conn.execute(
             "DELETE FROM expenses WHERE id = ? AND user_id = ?",
             (expense_id, user_id),
+        )
+        return cursor.rowcount > 0
+
+
+def add_credit(user_id, amount, source, date, description=None):
+    with closing(get_db()) as conn, conn:
+        conn.execute(
+            "INSERT INTO credits (user_id, amount, source, date, description) VALUES (?, ?, ?, ?, ?)",
+            (user_id, amount, source, date, description),
+        )
+
+
+def get_credit(credit_id, user_id):
+    """Return the credit if it belongs to the user, else None."""
+    with closing(get_db()) as conn:
+        return conn.execute(
+            "SELECT * FROM credits WHERE id = ? AND user_id = ?",
+            (credit_id, user_id),
+        ).fetchone()
+
+
+def update_credit(credit_id, user_id, amount, source, date, description=None):
+    """Update a user's credit; return whether a row was matched."""
+    with closing(get_db()) as conn, conn:
+        cursor = conn.execute(
+            "UPDATE credits SET amount = ?, source = ?, date = ?, description = ? "
+            "WHERE id = ? AND user_id = ?",
+            (amount, source, date, description, credit_id, user_id),
+        )
+        return cursor.rowcount > 0
+
+
+def delete_credit(credit_id, user_id):
+    """Delete a user's credit; return whether a row was deleted."""
+    with closing(get_db()) as conn, conn:
+        cursor = conn.execute(
+            "DELETE FROM credits WHERE id = ? AND user_id = ?",
+            (credit_id, user_id),
         )
         return cursor.rowcount > 0
 

@@ -2,6 +2,19 @@ import datetime
 
 from database.db import get_db
 
+
+def _user_date_filter(user_id, date_from=None, date_to=None):
+    """Return a WHERE clause and its parameters for a user's date range."""
+    where, params = "WHERE user_id = ?", [user_id]
+    if date_from:
+        where += " AND date >= ?"
+        params.append(date_from)
+    if date_to:
+        where += " AND date <= ?"
+        params.append(date_to)
+    return where, params
+
+
 # ------------------------------------------------------------------ #
 # SA2: User data                                                      #
 # ------------------------------------------------------------------ #
@@ -29,13 +42,7 @@ def get_user_by_id(user_id):
 
 
 def get_summary_stats(user_id, date_from=None, date_to=None):
-    where, params = "WHERE user_id = ?", [user_id]
-    if date_from:
-        where += " AND date >= ?"
-        params.append(date_from)
-    if date_to:
-        where += " AND date <= ?"
-        params.append(date_to)
+    where, params = _user_date_filter(user_id, date_from, date_to)
     conn = get_db()
     row = conn.execute(
         "SELECT COALESCE(SUM(amount), 0) AS total_spent, COUNT(*) AS transaction_count "
@@ -62,13 +69,7 @@ def get_summary_stats(user_id, date_from=None, date_to=None):
 
 
 def get_recent_transactions(user_id, limit=10, date_from=None, date_to=None):
-    where, params = "WHERE user_id = ?", [user_id]
-    if date_from:
-        where += " AND date >= ?"
-        params.append(date_from)
-    if date_to:
-        where += " AND date <= ?"
-        params.append(date_to)
+    where, params = _user_date_filter(user_id, date_from, date_to)
     params.append(limit)
     conn = get_db()
     rows = conn.execute(
@@ -99,13 +100,7 @@ def get_recent_transactions(user_id, limit=10, date_from=None, date_to=None):
 
 
 def get_category_breakdown(user_id, date_from=None, date_to=None):
-    where, params = "WHERE user_id = ?", [user_id]
-    if date_from:
-        where += " AND date >= ?"
-        params.append(date_from)
-    if date_to:
-        where += " AND date <= ?"
-        params.append(date_to)
+    where, params = _user_date_filter(user_id, date_from, date_to)
     conn = get_db()
     rows = conn.execute(
         "SELECT category AS name, SUM(amount) AS amount "
@@ -123,3 +118,42 @@ def get_category_breakdown(user_id, date_from=None, date_to=None):
         n, a, fl, rem = floors[i]
         floors[i] = (n, a, fl + 1, rem)
     return [{"name": n, "amount": a, "pct": p} for n, a, p, _ in floors]
+
+
+# ------------------------------------------------------------------ #
+# Credits                                                             #
+# ------------------------------------------------------------------ #
+
+
+def get_recent_credits(user_id, limit=10, date_from=None, date_to=None):
+    where, params = _user_date_filter(user_id, date_from, date_to)
+    params.append(limit)
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT id, date, description, source, amount "
+        "FROM credits " + where + " ORDER BY date DESC, id DESC LIMIT ?",
+        params,
+    ).fetchall()
+    conn.close()
+    result = []
+    for row in rows:
+        day = datetime.date.fromisoformat(row["date"])
+        result.append(
+            {
+                "id": row["id"],
+                "date_iso": row["date"],
+                "date": f"{day:%B} {day.day}, {day.year}",
+                "description": row["description"] or "",
+                "source": row["source"],
+                "amount": row["amount"],
+            }
+        )
+    return result
+
+
+def count_credits(user_id, date_from=None, date_to=None):
+    where, params = _user_date_filter(user_id, date_from, date_to)
+    conn = get_db()
+    row = conn.execute("SELECT COUNT(*) FROM credits " + where, params).fetchone()
+    conn.close()
+    return row[0]

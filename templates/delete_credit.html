@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}Delete Credit — Spendly{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/add_expense.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/delete_expense.css') }}">
+{% endblock %}
+
+{% block content %}
+<section class="add-expense-section">
+    <div class="add-expense-container">
+
+        <div class="add-expense-header">
+            <h1 class="add-expense-title">Delete Credit</h1>
+            <p class="add-expense-subtitle">Check the details before deleting</p>
+        </div>
+
+        <div class="add-expense-card">
+            <dl class="expense-summary">
+                <div>
+                    <dt>Amount</dt>
+                    <dd>₹{{ "{:,.2f}".format(credit.amount) }}</dd>
+                </div>
+                <div>
+                    <dt>Source</dt>
+                    <dd>{{ credit.source }}</dd>
+                </div>
+                <div>
+                    <dt>Date</dt>
+                    <dd><time datetime="{{ credit.date }}">{{ credit_date }}</time></dd>
+                </div>
+                <div>
+                    <dt>Description</dt>
+                    <dd>{{ credit.description or 'No description' }}</dd>
+                </div>
+            </dl>
+
+            <p class="delete-warning" id="delete-warning">This cannot be undone.</p>
+
+            <form method="POST" action="{{ url_for('delete_credit', id=credit.id) }}">
+                <button type="submit" class="btn-submit btn-danger" aria-describedby="delete-warning">Delete Credit</button>
+            </form>
+
+            <a class="btn-cancel" href="{{ url_for('profile') }}">Cancel</a>
+        </div>
+
+    </div>
+</section>
+{% endblock %}

@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block title %}Add Credit — Spendly{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/add_expense.css') }}">
+{% endblock %}
+
+{% block content %}
+<section class="add-expense-section">
+    <div class="add-expense-container">
+
+        <div class="add-expense-header">
+            <h1 class="add-expense-title">Add Credit</h1>
+            <p class="add-expense-subtitle">Record money coming in to your account</p>
+        </div>
+
+        <div class="add-expense-card">
+            {% with messages = get_flashed_messages(with_categories=True) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="auth-{{ category }}">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <form method="POST" action="{{ url_for('add_credit') }}">
+                {% include "_entry_fields.html" %}
+
+                <button type="submit" class="btn-submit">Add Credit</button>
+            </form>
+        </div>
+
+        <p class="add-expense-switch">
+            <a href="{{ url_for('profile') }}">← Back to profile</a>
+        </p>
+
+    </div>
+</section>
+{% endblock %}

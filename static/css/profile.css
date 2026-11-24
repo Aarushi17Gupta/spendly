@@ -101,11 +101,18 @@
     margin: 0 0.4rem;
 }
 
+.profile-actions {
+    display: flex;
+    gap: 0.75rem;
+    flex-shrink: 0;
+}
+
 .btn-add-expense {
     font-size: 0.9rem;
     font-weight: 500;
     color: var(--paper-card);
     background: var(--accent);
+    border: 1px solid var(--accent);
     border-radius: var(--radius-sm);
     padding: 0.6rem 1.1rem;
     white-space: nowrap;
@@ -113,6 +120,14 @@
 }
 
 .btn-add-expense:hover { background: var(--ink); }
+
+/* Outlined variant of the button above. */
+.btn-add-credit {
+    color: var(--accent);
+    background: var(--paper-card);
+}
+
+.btn-add-credit:hover { background: var(--accent-light); }
 
 /* ------------------------------------------------------------------ */
 /* Summary stats row                                                   */
@@ -374,6 +389,13 @@
     .tx-table .tx-date { white-space: normal; }
 }
 
+/* Two buttons would squeeze the name, so they move to their own row. */
+@media (max-width: 768px) {
+    .profile-hero { flex-wrap: wrap; }
+
+    .profile-actions { width: 100%; }
+}
+
 /* Keeps large amounts inside the card just above the stacked layout. */
 @media (max-width: 680px) {
     .tx-table th,
@@ -386,14 +408,17 @@
         gap: 1rem;
     }
 
-    .profile-hero {
-        flex-wrap: wrap;
-        gap: 1rem;
-    }
+    .profile-hero { gap: 1rem; }
 
-    .profile-hero .btn-add-expense {
-        width: 100%;
-        text-align: center;
+    .profile-actions { flex-wrap: wrap; }
+
+    .profile-actions .btn-add-expense {
+        flex: 1 1 auto;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 44px;
+        padding-inline: 0.5rem;
     }
 
     .profile-meta span { display: block; }

@@ -9,11 +9,52 @@
 
 {% macro money(value) %}₹{{ "{:,.2f}".format(value) }}{% endmacro %}
 
-{% macro empty_state() %}
+{% macro icon(path) %}<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="{{ path }}"/></svg>{% endmacro %}
+
+{% macro empty_state(noun, add_endpoint) %}
 {% if date_from or date_to %}
-<p class="empty-state">No expenses in this period. <a href="{{ url_for('profile') }}">Show all time</a></p>
+<p class="empty-state">No {{ noun }}s in this period. <a href="{{ url_for('profile') }}">Show all time</a></p>
 {% else %}
-<p class="empty-state">No expenses yet. <a href="{{ url_for('add_expense') }}">Add your first expense</a></p>
+<p class="empty-state">No {{ noun }}s yet. <a href="{{ url_for(add_endpoint) }}">Add your first {{ noun }}</a></p>
+{% endif %}
+{% endmacro %}
+
+{# field is the row's grouping ("category" or "source"); noun prefixes the action labels. #}
+{% macro entry_table(rows, total, heading_id, field, edit_endpoint, delete_endpoint, noun='') %}
+{# Explicit roles keep table semantics when rows are stacked on mobile. #}
+<table class="tx-table" role="table" aria-labelledby="{{ heading_id }}">
+    <thead role="rowgroup">
+        <tr role="row">
+            <th scope="col" role="columnheader">Date</th>
+            <th scope="col" role="columnheader">Description</th>
+            <th scope="col" role="columnheader">{{ field|capitalize }}</th>
+            <th scope="col" role="columnheader" class="col-amount">Amount</th>
+            <th scope="col" role="columnheader">Actions</th>
+        </tr>
+    </thead>
+    <tbody role="rowgroup">
+        {% for row in rows %}
+        <tr role="row">
+            <td role="cell" class="tx-date"><time datetime="{{ row.date_iso }}">{{ row.date }}</time></td>
+            <td role="cell" class="tx-desc{% if not row.description %} tx-desc--empty{% endif %}">{{ row.description or 'No description' }}</td>
+            {% if field == 'category' %}
+            <td role="cell" class="tx-category"><span class="badge cat cat-{{ row.category|lower }}"><span class="cat-dot"></span>{{ row.category }}</span></td>
+            {% else %}
+            <td role="cell" class="tx-category"><span class="badge">{{ row[field] }}</span></td>
+            {% endif %}
+            <td role="cell" class="tx-amount">{{ money(row.amount) }}</td>
+            <td role="cell" class="tx-action">
+                <span class="tx-actions">
+                    <a class="tx-edit" href="{{ url_for(edit_endpoint, id=row.id) }}" title="Edit" aria-label="Edit {{ noun }}{{ row.description or row[field] }}, {{ money(row.amount) }}, {{ row.date }}">{{ icon("M17 3a2.83 2.83 0 0 1 4 4L7.5 20.5 2 22l1.5-5.5zM14.5 5.5l4 4") }}</a>
+                    <a class="tx-delete" href="{{ url_for(delete_endpoint, id=row.id) }}" title="Delete" aria-label="Delete {{ noun }}{{ row.description or row[field] }}, {{ money(row.amount) }}, {{ row.date }}">{{ icon("M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M19 6l-1 14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1L5 6M10 11v6M14 11v6") }}</a>
+                </span>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% if total > rows|length %}
+<p class="section-note">Showing latest {{ rows|length }} of {{ total }}</p>
 {% endif %}
 {% endmacro %}
 
@@ -30,7 +71,10 @@
             <h1 class="profile-name">{{ user.name }}</h1>
             <p class="profile-meta"><span>{{ user.email }}</span><span>Member since {{ user.member_since }}</span></p>
         </div>
-        <a href="{{ url_for('add_expense') }}" class="btn-add-expense">+ Add Expense</a>
+        <div class="profile-actions">
+            <a href="{{ url_for('add_expense') }}" class="btn-add-expense">+ Add Expense</a>
+            <a href="{{ url_for('add_credit') }}" class="btn-add-expense btn-add-credit">+ Add Credit</a>
+        </div>
     </header>
 
     <form class="date-filter" method="get" action="{{ url_for('profile') }}">
@@ -66,39 +110,9 @@
         <section class="profile-section" aria-labelledby="tx-heading">
             <h2 class="section-title" id="tx-heading">Recent Transactions</h2>
             {% if transactions %}
-            {# Explicit roles keep table semantics when rows are stacked on mobile. #}
-            <table class="tx-table" role="table" aria-labelledby="tx-heading">
-                <thead role="rowgroup">
-                    <tr role="row">
-                        <th scope="col" role="columnheader">Date</th>
-                        <th scope="col" role="columnheader">Description</th>
-                        <th scope="col" role="columnheader">Category</th>
-                        <th scope="col" role="columnheader" class="col-amount">Amount</th>
-                        <th scope="col" role="columnheader">Actions</th>
-                    </tr>
-                </thead>
-                <tbody role="rowgroup">
-                    {% for tx in transactions %}
-                    <tr role="row">
-                        <td role="cell" class="tx-date"><time datetime="{{ tx.date_iso }}">{{ tx.date }}</time></td>
-                        <td role="cell" class="tx-desc{% if not tx.description %} tx-desc--empty{% endif %}">{{ tx.description or 'No description' }}</td>
-                        <td role="cell" class="tx-category"><span class="badge cat cat-{{ tx.category|lower }}"><span class="cat-dot"></span>{{ tx.category }}</span></td>
-                        <td role="cell" class="tx-amount">{{ money(tx.amount) }}</td>
-                        <td role="cell" class="tx-action">
-                            <span class="tx-actions">
-                                <a class="tx-edit" href="{{ url_for('edit_expense', id=tx.id) }}" title="Edit" aria-label="Edit {{ tx.description or tx.category }}, {{ money(tx.amount) }}, {{ tx.date }}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M17 3a2.83 2.83 0 0 1 4 4L7.5 20.5 2 22l1.5-5.5zM14.5 5.5l4 4"/></svg></a>
-                                <a class="tx-delete" href="{{ url_for('delete_expense', id=tx.id) }}" title="Delete" aria-label="Delete {{ tx.description or tx.category }}, {{ money(tx.amount) }}, {{ tx.date }}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M19 6l-1 14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1L5 6M10 11v6M14 11v6"/></svg></a>
-                            </span>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-            {% if stats.transaction_count > transactions|length %}
-            <p class="section-note">Showing latest {{ transactions|length }} of {{ stats.transaction_count }}</p>
-            {% endif %}
+            {{ entry_table(transactions, stats.transaction_count, 'tx-heading', 'category', 'edit_expense', 'delete_expense') }}
             {% else %}
-            {{ empty_state() }}
+            {{ empty_state('expense', 'add_expense') }}
             {% endif %}
         </section>
 
@@ -119,10 +133,19 @@
                 {% endfor %}
             </ul>
             {% else %}
-            {{ empty_state() }}
+            {{ empty_state('expense', 'add_expense') }}
             {% endif %}
         </section>
     </div>
+
+    <section class="profile-section" aria-labelledby="credit-heading">
+        <h2 class="section-title" id="credit-heading">Recent Credits</h2>
+        {% if credits %}
+        {{ entry_table(credits, credit_count, 'credit-heading', 'source', 'edit_credit', 'delete_credit', noun='credit ') }}
+        {% else %}
+        {{ empty_state('credit', 'add_credit') }}
+        {% endif %}
+    </section>
 
 </div>
 {% endblock %}

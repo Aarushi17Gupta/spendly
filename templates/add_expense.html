@@ -25,7 +25,7 @@
             {% endwith %}
 
             <form method="POST" action="{{ url_for('add_expense') }}">
-                {% include "_expense_fields.html" %}
+                {% include "_entry_fields.html" %}
 
                 <button type="submit" class="btn-submit">Add Expense</button>
             </form>
