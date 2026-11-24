@@ -1,0 +1,54 @@
+/* ------------------------------------------------------------------ */
+/* Delete Expense page                                                 */
+/* ------------------------------------------------------------------ */
+
+.expense-summary { margin-bottom: 1.25rem; }
+
+.expense-summary > div {
+    display: flex;
+    justify-content: space-between;
+    gap: 1.5rem;
+    padding: 0.6rem 0;
+    border-bottom: 1px solid var(--border-soft);
+}
+
+.expense-summary dt {
+    font-size: 0.85rem;
+    color: var(--ink-muted);
+}
+
+.expense-summary dd {
+    min-width: 0;
+    text-align: right;
+    font-weight: 500;
+    color: var(--ink);
+    overflow-wrap: anywhere;
+}
+
+.delete-warning {
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius-sm);
+    background: var(--danger-light);
+    color: var(--danger);
+    font-size: 0.875rem;
+    margin-bottom: 0.75rem;
+}
+
+.btn-danger { background: var(--danger); }
+
+.btn-danger:hover { background: var(--ink); }
+
+.btn-cancel {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    margin-top: 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: var(--ink-soft);
+}
+
+.btn-cancel:hover { background: var(--paper-warm); }

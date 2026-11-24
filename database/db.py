@@ -86,6 +86,16 @@ def update_expense(expense_id, user_id, amount, category, date, description=None
         return cursor.rowcount > 0
 
 
+def delete_expense(expense_id, user_id):
+    """Delete a user's expense; return whether a row was deleted."""
+    with closing(get_db()) as conn, conn:
+        cursor = conn.execute(
+            "DELETE FROM expenses WHERE id = ? AND user_id = ?",
+            (expense_id, user_id),
+        )
+        return cursor.rowcount > 0
+
+
 def seed_db():
     with closing(get_db()) as conn, conn:
         if conn.execute("SELECT COUNT(*) FROM users").fetchone()[0] > 0:

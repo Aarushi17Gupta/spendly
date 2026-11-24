@@ -510,14 +510,6 @@ def test_profile_css_styles_edit_link_in_stacked_layout():
     assert ".tx-action" in narrow[1], "Edit link must be styled at 600px and below"
 
 
-def test_delete_route_remains_a_stub(auth_client, expense_id):
-    before = saved_expenses()
-    response = auth_client.get(f"/expenses/{expense_id}/delete")
-    assert response.status_code == 200
-    assert "Step 9" in response.get_data(as_text=True)
-    assert saved_expenses() == before
-
-
 def test_add_expense_page_still_works(auth_client, user_id):
     html = auth_client.get("/expenses/add").get_data(as_text=True)
     for field in ("amount", "category", "date", "description"):
