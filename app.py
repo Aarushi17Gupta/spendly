@@ -1,4 +1,5 @@
 import datetime
+import math
 import os
 
 from flask import Flask, flash, redirect, render_template, request, session, url_for
@@ -9,6 +10,9 @@ from database.db import get_user_by_id as db_get_user_by_id
 from database.queries import get_user_by_id, get_summary_stats, get_recent_transactions, get_category_breakdown
 
 CATEGORIES = ["Food", "Transport", "Bills", "Health", "Entertainment", "Shopping", "Other"]
+MIN_AMOUNT = 0.01
+MAX_AMOUNT = 10_000_000  # ₹1 crore
+MAX_DESCRIPTION_LENGTH = 200
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret')
@@ -23,13 +27,16 @@ with app.app_context():
 # ------------------------------------------------------------------ #
 
 def _valid_date(s):
+    """Return s unchanged if it is a canonical YYYY-MM-DD date, else None."""
     if not s:
         return None
     try:
-        datetime.date.fromisoformat(s)
-        return s
+        parsed = datetime.date.fromisoformat(s)
     except ValueError:
         return None
+    # fromisoformat() also accepts forms like 20261124 and 2026-W48-2, which
+    # would break text-based date comparisons in SQLite.
+    return s if parsed.isoformat() == s else None
 
 
 def _period_label(date_from, date_to):
@@ -44,6 +51,43 @@ def _period_label(date_from, date_to):
     if date_to:
         return f"Until {fmt(date_to)}"
     return "All time"
+
+
+def _current_user_id():
+    """Return the logged-in user's id, clearing sessions of deleted users."""
+    user_id = session.get("user_id")
+    if not user_id:
+        return None
+    if db_get_user_by_id(user_id) is None:
+        session.clear()
+        return None
+    return user_id
+
+
+def _expense_form_error(form):
+    """Return the first validation error for an expense form, or None."""
+    try:
+        amount = float(form["amount"])
+    except ValueError:
+        amount = math.nan
+
+    if not math.isfinite(amount) or amount <= 0:
+        return "Amount must be a positive number."
+    if not MIN_AMOUNT <= amount <= MAX_AMOUNT:
+        return "Amount must be between ₹0.01 and ₹1,00,00,000."
+    if form["category"] not in CATEGORIES:
+        return "Please select a valid category."
+    if not _valid_date(form["date"]):
+        return "Date must be a valid date (YYYY-MM-DD)."
+    if len(form["description"]) > MAX_DESCRIPTION_LENGTH:
+        return f"Description must be {MAX_DESCRIPTION_LENGTH} characters or fewer."
+    return None
+
+
+def _render_expense_form(form):
+    return render_template("add_expense.html", categories=CATEGORIES, form=form,
+                           min_amount=MIN_AMOUNT, max_amount=MAX_AMOUNT,
+                           max_description_length=MAX_DESCRIPTION_LENGTH)
 
 
 @app.context_processor
@@ -139,18 +183,15 @@ def logout():
 
 @app.route("/profile")
 def profile():
-    if not session.get("user_id"):
+    user_id = _current_user_id()
+    if user_id is None:
         return redirect(url_for("login"))
 
-    user_id = session["user_id"]
     date_from = _valid_date(request.args.get("from"))
     date_to = _valid_date(request.args.get("to"))
 
     # ---- SA2: user dict ------------------------------------------ #
     user_row = get_user_by_id(user_id)
-    if user_row is None:
-        session.clear()
-        return redirect(url_for("login"))
     initials = "".join(w[0].upper() for w in user_row["name"].split())[:2]
     user = {**user_row, "initials": initials}
     # ---- end SA2 ------------------------------------------------- #
@@ -176,44 +217,33 @@ def profile():
 
 @app.route("/analytics")
 def analytics():
-    if not session.get("user_id"):
+    if _current_user_id() is None:
         return redirect(url_for("login"))
     return render_template("analytics.html")
 
 
 @app.route("/expenses/add", methods=["GET", "POST"])
 def add_expense():
-    if not session.get("user_id"):
+    user_id = _current_user_id()
+    if user_id is None:
         return redirect(url_for("login"))
 
     if request.method == "POST":
-        amount_raw = request.form.get("amount", "").strip()
-        category = request.form.get("category", "").strip()
-        date_raw = request.form.get("date", "").strip()
-        description = request.form.get("description", "").strip() or None
-        form = dict(amount=amount_raw, category=category, date=date_raw, description=description or "")
+        form = {
+            field: request.form.get(field, "").strip()
+            for field in ("amount", "category", "date", "description")
+        }
+        error = _expense_form_error(form)
+        if error:
+            flash(error, "error")
+            return _render_expense_form(form)
 
-        try:
-            amount = float(amount_raw)
-            if amount <= 0:
-                raise ValueError
-        except ValueError:
-            flash("Amount must be a positive number.", "error")
-            return render_template("add_expense.html", categories=CATEGORIES, form=form)
-
-        if category not in CATEGORIES:
-            flash("Please select a valid category.", "error")
-            return render_template("add_expense.html", categories=CATEGORIES, form=form)
-
-        if not _valid_date(date_raw):
-            flash("Date must be a valid date (YYYY-MM-DD).", "error")
-            return render_template("add_expense.html", categories=CATEGORIES, form=form)
-
-        db_add_expense(session["user_id"], amount, category, date_raw, description)
+        db_add_expense(user_id, float(form["amount"]), form["category"],
+                       form["date"], form["description"] or None)
         flash("Expense added successfully.", "success")
         return redirect(url_for("profile"))
 
-    return render_template("add_expense.html", categories=CATEGORIES, form={})
+    return _render_expense_form({})
 
 
 @app.route("/expenses/<int:id>/edit")
