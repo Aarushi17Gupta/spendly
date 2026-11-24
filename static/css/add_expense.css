@@ -46,6 +46,12 @@
     font-weight: 400;
 }
 
+.form-hint {
+    margin-top: 0.4rem;
+    font-size: 0.8rem;
+    color: var(--ink-muted);
+}
+
 .add-expense-switch {
     text-align: center;
     margin-top: 1.25rem;

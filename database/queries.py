@@ -2,7 +2,8 @@ import datetime
 
 from database.db import get_db
 
-# The paid_from value for deposits made by the user rather than by salary deduction.
+# The paid_from value for savings that came out of the user's account.
+# Only these reduce the available balance.
 OWN_ACCOUNT = "My account"
 
 
@@ -194,6 +195,26 @@ def get_net_summary(user_id, date_from=None, date_to=None):
         "total_credits": total_credits,
         "total_spent": total_spent,
         "net": round(total_credits - total_spent, 2),
+    }
+
+
+def get_available_summary(user_id, date_from=None, date_to=None):
+    """Return the period's credits, expenses, own-account savings and what is left."""
+    net_summary = get_net_summary(user_id, date_from, date_to)
+    where, params = _user_date_filter(user_id, date_from, date_to)
+    conn = get_db()
+    saved = conn.execute(
+        "SELECT COALESCE(SUM(amount), 0) FROM savings " + where + " AND paid_from = ?",
+        [*params, OWN_ACCOUNT],
+    ).fetchone()[0]
+    conn.close()
+    saved_from_account = round(saved, 2)
+    return {
+        "total_credits": net_summary["total_credits"],
+        "total_spent": net_summary["total_spent"],
+        "saved_from_account": saved_from_account,
+        # Subtracting from the rounded net avoids negative zero.
+        "available": round(net_summary["net"] - saved_from_account, 2),
     }
 
 

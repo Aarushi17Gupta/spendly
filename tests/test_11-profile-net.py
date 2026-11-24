@@ -1,9 +1,9 @@
-"""Tests for Step 11 - profile net: Total Credits and Net cards on GET /profile
-and database.queries.get_net_summary()."""
+"""Tests for Step 11 - profile net: Total Credits card on GET /profile and
+database.queries.get_net_summary(). The Net card became the Available card in
+Step 13; its value, date-filter and route tests live in test_13-available-balance.py."""
 
 import math
 import re
-from contextlib import closing
 from pathlib import Path
 
 import pytest
@@ -15,7 +15,6 @@ from database.db import (
     add_expense,
     add_saving,
     create_user,
-    get_db,
     get_user_by_email,
     init_db,
 )
@@ -25,29 +24,6 @@ EMAIL = "net@spendly.test"
 OTHER_EMAIL = "other@spendly.test"
 OWN_ACCOUNT = "My account"
 PROFILE_CSS = Path(__file__).resolve().parent.parent / "static" / "css" / "profile.css"
-
-CREDIT_FORM = {
-    "amount": "100.00",
-    "source": "Salary",
-    "date": "2026-06-02",
-    "description": "June pay",
-}
-EXPENSE_FORM = {
-    "amount": "40.00",
-    "category": "Food",
-    "date": "2026-06-02",
-    "description": "Dinner",
-}
-SAVING_FORM = {
-    "amount": "700.00",
-    "type": "FD",
-    "date": "2026-06-02",
-    "description": "Deposit",
-    "paid_from": OWN_ACCOUNT,
-    "institution": "",
-    "interest_rate": "",
-    "maturity_date": "",
-}
 
 
 @pytest.fixture()
@@ -80,11 +56,6 @@ def auth_client(client, user_id):
 # ---- Helpers ---------------------------------------------------------- #
 
 
-def last_id(table):
-    with closing(get_db()) as conn:
-        return conn.execute(f"SELECT MAX(id) FROM {table}").fetchone()[0]  # noqa: S608
-
-
 def credit(user_id, amount, date="2026-05-10"):
     add_credit(user_id, amount, "Salary", date, "pay")
 
@@ -99,13 +70,14 @@ def profile_html(client, query=""):
     return response.get_data(as_text=True)
 
 
-def net_section(html):
+def available_section(html):
     match = re.search(
-        r'<section class="profile-net" aria-label="Income and net">.*?</section>',
+        r'<section class="profile-available" '
+        r'aria-label="Income and available balance">.*?</section>',
         html,
         re.S,
     )
-    assert match, "profile-net section not found"
+    assert match, "profile-available section not found"
     return match.group(0)
 
 
@@ -138,15 +110,10 @@ def cards(section_html):
     return result
 
 
-def net_cards(client, query=""):
-    found = cards(net_section(profile_html(client, query)))
-    assert [c["label"] for c in found] == ["Total Credits", "Net"]
+def available_cards(client, query=""):
+    found = cards(available_section(profile_html(client, query)))
+    assert [c["label"] for c in found] == ["Total Credits", "Available"]
     return {c["label"]: c for c in found}
-
-
-def values(client, query=""):
-    found = net_cards(client, query)
-    return found["Total Credits"]["value"], found["Net"]["value"]
 
 
 def stat_cards_by_label(html):
@@ -317,101 +284,12 @@ class TestGetNetSummary:
         assert summary == {"total_credits": 0, "total_spent": 5.0, "net": -5.0}
 
 
-# ---- Profile page values ----------------------------------------------- #
+# ---- Profile page: Total Credits --------------------------------------- #
 
 
-class TestProfileNetValues:
-    def test_positive_net_shows_exact_amounts(self, auth_client, user_id):
-        credit(user_id, 50000)
-        expense(user_id, 12345.50)
-        found = net_cards(auth_client)
-        assert found["Total Credits"]["value"] == "₹50,000.00"
-        assert found["Net"]["value"] == "₹37,654.50"
-        assert "stat-card--negative" not in found["Net"]["classes"]
-
-    def test_negative_net_has_sign_before_symbol_and_negative_class(
-        self, auth_client, user_id
-    ):
-        credit(user_id, 100)
-        expense(user_id, 250)
-        found = net_cards(auth_client)
-        assert found["Total Credits"]["value"] == "₹100.00"
-        assert found["Net"]["value"] == "-₹150.00"
-        assert "stat-card--negative" in found["Net"]["classes"]
-
-    def test_equal_amounts_show_zero_without_negative_style(self, auth_client, user_id):
-        credit(user_id, 321.10)
-        expense(user_id, 321.10)
-        net = net_cards(auth_client)["Net"]
-        assert net["value"] == "₹0.00"
-        assert "stat-card--negative" not in net["classes"]
-
-    def test_user_with_no_data_sees_zero_in_both_cards(self, auth_client):
-        found = net_cards(auth_client)
-        assert found["Total Credits"]["value"] == "₹0.00"
-        assert found["Net"]["value"] == "₹0.00"
-        assert "stat-card--negative" not in found["Net"]["classes"]
-
-    def test_only_expenses_shows_zero_credits_and_negative_net(
-        self, auth_client, user_id
-    ):
-        expense(user_id, 1234.5)
-        found = net_cards(auth_client)
-        assert found["Total Credits"]["value"] == "₹0.00"
-        assert found["Net"]["value"] == "-₹1,234.50"
-        assert "stat-card--negative" in found["Net"]["classes"]
-
-    def test_only_credits_shows_positive_net(self, auth_client, user_id):
-        credit(user_id, 1234.5)
-        found = net_cards(auth_client)
-        assert found["Total Credits"]["value"] == "₹1,234.50"
-        assert found["Net"]["value"] == "₹1,234.50"
-        assert "stat-card--negative" not in found["Net"]["classes"]
-
-    def test_several_credits_and_expenses_are_not_multiplied(
-        self, auth_client, user_id
-    ):
-        for amount in (100, 200, 300):
-            credit(user_id, amount)
-        for amount in (10, 20, 30, 40):
-            expense(user_id, amount)
-        assert values(auth_client) == ("₹600.00", "₹500.00")
-
-    def test_float_amounts_cancelling_show_positive_zero(self, auth_client, user_id):
-        credit(user_id, 0.10)
-        credit(user_id, 0.20)
-        expense(user_id, 0.30)
-        found = net_cards(auth_client)
-        assert found["Net"]["value"] == "₹0.00"
-        assert "-₹0.00" not in net_section(profile_html(auth_client))
-        assert "stat-card--negative" not in found["Net"]["classes"]
-
-    def test_sub_paisa_expense_never_shows_negative_zero(self, auth_client, user_id):
-        expense(user_id, 0.004)
-        found = net_cards(auth_client)
-        assert found["Net"]["value"] == "₹0.00"
-        assert "stat-card--negative" not in found["Net"]["classes"]
-
-    def test_one_crore_positive_fits_with_separators(self, auth_client, user_id):
-        credit(user_id, 10_000_000)
-        assert values(auth_client) == ("₹10,000,000.00", "₹10,000,000.00")
-
-    def test_one_crore_negative_keeps_sign_and_style(self, auth_client, user_id):
-        expense(user_id, 10_000_000)
-        found = net_cards(auth_client)
-        assert found["Net"]["value"] == "-₹10,000,000.00"
-        assert "stat-card--negative" in found["Net"]["classes"]
-
-    def test_negative_class_only_when_net_below_zero(self, auth_client, user_id):
-        credit(user_id, 100)
-        expense(user_id, 100.01)
-        assert "stat-card--negative" in net_cards(auth_client)["Net"]["classes"]
-
-    def test_net_card_always_has_net_class(self, auth_client):
-        assert "stat-card--net" in net_cards(auth_client)["Net"]["classes"]
-
+class TestProfileCreditsCard:
     def test_cards_use_existing_stat_classes(self, auth_client):
-        for card in net_cards(auth_client).values():
+        for card in available_cards(auth_client).values():
             assert "stat-card" in card["classes"]
             assert '<span class="stat-label">' in card["html"]
             assert '<span class="stat-value">' in card["html"]
@@ -422,237 +300,47 @@ class TestProfileNetValues:
         for _ in range(12):
             credit(user_id, 100)
         html = profile_html(auth_client)
-        assert cards(net_section(html))[0]["value"] == "₹1,200.00"
+        assert cards(available_section(html))[0]["value"] == "₹1,200.00"
         credits_html = re.search(
             r'<section[^>]*aria-labelledby="credit-heading".*?</section>', html, re.S
         ).group(0)
         assert len(re.findall(r'class="tx-edit"', credits_html)) == 10
         assert "Showing latest 10 of 12" in credits_html
 
-    def test_other_users_data_never_affects_cards(self, auth_client, user_id, other_id):
-        credit(user_id, 500)
-        expense(user_id, 200)
-        credit(other_id, 9999)
-        expense(other_id, 7777)
-        assert values(auth_client) == ("₹500.00", "₹300.00")
-
-    def test_savings_do_not_affect_cards(self, auth_client, user_id):
-        credit(user_id, 1000)
-        expense(user_id, 300)
-        add_saving(user_id, 5000, "FD", "2026-05-10", OWN_ACCOUNT)
-        assert values(auth_client) == ("₹1,000.00", "₹700.00")
-
-
-# ---- Date filter ------------------------------------------------------- #
-
-
-class TestProfileNetDateFilter:
-    @pytest.fixture()
-    def spread(self, user_id):
-        for day, amount in (
-            ("2026-04-30", 1),
-            ("2026-05-01", 10),
-            ("2026-05-15", 100),
-            ("2026-05-31", 1000),
-            ("2026-06-01", 10000),
-        ):
-            credit(user_id, amount, day)
-            expense(user_id, amount / 10, day)
-
-    def test_both_boundary_dates_are_included(self, auth_client, spread):
-        assert values(auth_client, "?from=2026-05-01&to=2026-05-31") == (
-            "₹1,110.00",
-            "₹999.00",
-        )
-
-    def test_from_only_range(self, auth_client, spread):
-        # credits 10+100+1000+10000, expenses 1+10+100+1000
-        assert values(auth_client, "?from=2026-05-01") == ("₹11,110.00", "₹9,999.00")
-
-    def test_to_only_range(self, auth_client, spread):
-        # credits 1+10+100+1000, expenses 0.1+1+10+100
-        assert values(auth_client, "?to=2026-05-31") == ("₹1,111.00", "₹999.90")
-
-    def test_single_day_range(self, auth_client, spread):
-        assert values(auth_client, "?from=2026-05-15&to=2026-05-15") == (
-            "₹100.00",
-            "₹90.00",
-        )
-
-    def test_range_matching_nothing_shows_zero_in_both(self, auth_client, spread):
-        found = net_cards(auth_client, "?from=2030-01-01&to=2030-12-31")
-        assert found["Total Credits"]["value"] == "₹0.00"
-        assert found["Net"]["value"] == "₹0.00"
-        assert "stat-card--negative" not in found["Net"]["classes"]
-
-    def test_filter_applies_to_negative_net(self, auth_client, user_id):
-        credit(user_id, 10, "2026-05-01")
-        expense(user_id, 60, "2026-05-02")
-        credit(user_id, 5000, "2026-07-01")
-        found = net_cards(auth_client, "?from=2026-05-01&to=2026-05-31")
-        assert found["Net"]["value"] == "-₹50.00"
-        assert "stat-card--negative" in found["Net"]["classes"]
-
-    @pytest.mark.parametrize(
-        "query",
-        [
-            "?from=garbage",
-            "?to=garbage",
-            "?from=2026-13-45&to=2026-99-99",
-            "?from=20260501",
-            "?to=2026-W20-1",
-            "?from=&to=",
-            "?from=2026-02-30",
-            "?from=%27%3B+DROP+TABLE+credits%3B--",
-        ],
-    )
-    def test_invalid_date_params_are_ignored(self, auth_client, spread, query):
-        assert values(auth_client, query) == ("₹11,111.00", "₹9,999.90")
-        response = auth_client.get("/profile" + query)
-        assert response.status_code == 200
-
-    def test_invalid_from_with_valid_to_applies_only_valid_bound(
-        self, auth_client, spread
-    ):
-        assert values(auth_client, "?from=junk&to=2026-05-31") == values(
-            auth_client, "?to=2026-05-31"
-        )
-
-
-# ---- Mutations through routes ------------------------------------------ #
-
-
-class TestNetUpdatesThroughRoutes:
-    def test_adding_a_credit_increases_credits_and_net(self, auth_client):
-        assert values(auth_client) == ("₹0.00", "₹0.00")
-        response = auth_client.post("/credits/add", data=CREDIT_FORM)
-        assert response.status_code == 302
-        assert values(auth_client) == ("₹100.00", "₹100.00")
-
-    def test_editing_a_credit_updates_credits_and_net(self, auth_client, user_id):
-        credit(user_id, 100)
-        cid = last_id("credits")
-        response = auth_client.post(
-            f"/credits/{cid}/edit", data={**CREDIT_FORM, "amount": "250.25"}
-        )
-        assert response.status_code == 302
-        assert values(auth_client) == ("₹250.25", "₹250.25")
-
-    def test_deleting_a_credit_updates_credits_and_net(self, auth_client, user_id):
-        credit(user_id, 100)
-        credit(user_id, 30)
-        cid = last_id("credits")
-        response = auth_client.post(f"/credits/{cid}/delete")
-        assert response.status_code == 302
-        assert values(auth_client) == ("₹100.00", "₹100.00")
-
-    def test_adding_an_expense_decreases_net(self, auth_client, user_id):
-        credit(user_id, 100)
-        response = auth_client.post("/expenses/add", data=EXPENSE_FORM)
-        assert response.status_code == 302
-        assert values(auth_client) == ("₹100.00", "₹60.00")
-
-    def test_editing_an_expense_updates_net(self, auth_client, user_id):
-        credit(user_id, 100)
-        expense(user_id, 40)
-        eid = last_id("expenses")
-        response = auth_client.post(
-            f"/expenses/{eid}/edit", data={**EXPENSE_FORM, "amount": "150.00"}
-        )
-        assert response.status_code == 302
-        found = net_cards(auth_client)
-        assert found["Total Credits"]["value"] == "₹100.00"
-        assert found["Net"]["value"] == "-₹50.00"
-        assert "stat-card--negative" in found["Net"]["classes"]
-
-    def test_deleting_an_expense_updates_net(self, auth_client, user_id):
-        credit(user_id, 100)
-        expense(user_id, 40)
-        eid = last_id("expenses")
-        response = auth_client.post(f"/expenses/{eid}/delete")
-        assert response.status_code == 302
-        assert values(auth_client) == ("₹100.00", "₹100.00")
-
-
-class TestSavingsLeaveNetSectionUntouched:
-    @pytest.fixture()
-    def seeded(self, user_id):
-        credit(user_id, 1000)
-        expense(user_id, 300)
-
-    def test_adding_a_saving_leaves_net_section_identical(self, auth_client, seeded):
-        before = net_section(profile_html(auth_client))
-        response = auth_client.post("/savings/add", data=SAVING_FORM)
-        assert response.status_code == 302
-        assert net_section(profile_html(auth_client)) == before
-
-    def test_editing_a_saving_leaves_net_section_identical(
-        self, auth_client, user_id, seeded
-    ):
-        add_saving(user_id, 700, "FD", "2026-05-10", OWN_ACCOUNT)
-        sid = last_id("savings")
-        before = net_section(profile_html(auth_client))
-        response = auth_client.post(
-            f"/savings/{sid}/edit", data={**SAVING_FORM, "amount": "9999.00"}
-        )
-        assert response.status_code == 302
-        assert net_section(profile_html(auth_client)) == before
-
-    def test_deleting_a_saving_leaves_net_section_identical(
-        self, auth_client, user_id, seeded
-    ):
-        add_saving(user_id, 700, "FD", "2026-05-10", OWN_ACCOUNT)
-        sid = last_id("savings")
-        before = net_section(profile_html(auth_client))
-        response = auth_client.post(f"/savings/{sid}/delete")
-        assert response.status_code == 302
-        assert net_section(profile_html(auth_client)) == before
-        assert values(auth_client) == ("₹1,000.00", "₹700.00")
-
 
 # ---- Structure --------------------------------------------------------- #
 
 
 class TestStructure:
-    def test_net_section_sits_between_date_filter_and_stats(self, auth_client):
+    def test_available_section_sits_between_date_filter_and_stats(self, auth_client):
         html = profile_html(auth_client)
         filter_pos = html.index('class="date-filter"')
-        net_pos = html.index('class="profile-net"')
+        available_pos = html.index('class="profile-available"')
         stats_pos = html.index('class="profile-stats"')
-        assert filter_pos < net_pos < stats_pos
+        assert filter_pos < available_pos < stats_pos
 
-    def test_net_section_is_not_inside_stats_section(self, auth_client):
+    def test_available_section_is_not_inside_stats_section(self, auth_client):
         html = profile_html(auth_client)
-        assert "profile-net" not in stats_section(html)
+        assert "profile-available" not in stats_section(html)
         assert "Total Credits" not in stats_section(html)
 
-    def test_net_section_has_exactly_two_cards_in_order(self, auth_client):
-        found = cards(net_section(profile_html(auth_client)))
-        assert [c["label"] for c in found] == ["Total Credits", "Net"]
+    def test_available_section_has_exactly_two_cards_in_order(self, auth_client):
+        found = cards(available_section(profile_html(auth_client)))
+        assert [c["label"] for c in found] == ["Total Credits", "Available"]
 
-    def test_total_credits_card_is_not_the_net_card(self, auth_client):
-        found = net_cards(auth_client)
-        assert "stat-card--net" not in found["Total Credits"]["classes"]
+    def test_total_credits_card_is_not_the_available_card(self, auth_client):
+        found = available_cards(auth_client)
+        assert "stat-card--available" not in found["Total Credits"]["classes"]
         assert "stat-card--negative" not in found["Total Credits"]["classes"]
 
     def test_cards_always_rendered_for_user_without_data(self, auth_client):
-        section = net_section(profile_html(auth_client))
+        section = available_section(profile_html(auth_client))
         assert "Total Credits" in section
-        assert ">Net<" in section
+        assert ">Available<" in section
 
-    def test_note_is_inside_net_card_after_its_value(self, auth_client):
-        net = net_cards(auth_client)["Net"]["html"]
-        note = "Credits minus expenses. Savings are not included."
-        assert note in net
-        assert net.index('<span class="stat-value">') < net.index(note)
-
-    def test_note_is_not_in_total_credits_card(self, auth_client):
-        credits_card = net_cards(auth_client)["Total Credits"]["html"]
-        assert "Savings are not included" not in credits_card
-
-    def test_net_section_has_no_inline_styles(self, auth_client, user_id):
+    def test_available_section_has_no_inline_styles(self, auth_client, user_id):
         expense(user_id, 500)
-        section = net_section(profile_html(auth_client))
+        section = available_section(profile_html(auth_client))
         assert "style=" not in section
         assert "<style" not in section
 
@@ -694,7 +382,7 @@ class TestLabels:
     def test_stat_card_labels_in_order(self, auth_client):
         assert stat_labels(profile_html(auth_client)) == [
             "Total Credits",
-            "Net",
+            "Available",
             "Total Spent",
             "Total Saved",
             "Expenses",
@@ -763,9 +451,9 @@ def css_rules():
 
 
 class TestCss:
-    def test_net_rules_exist(self):
-        selectors = [sel for sel, _ in css_rules() if "profile-net" in sel]
-        assert selectors, "no .profile-net rules found in profile.css"
+    def test_available_rules_exist(self):
+        selectors = [sel for sel, _ in css_rules() if "profile-available" in sel]
+        assert selectors, "no .profile-available rules found in profile.css"
 
     def test_negative_net_uses_danger_variable(self):
         bodies = [body for sel, body in css_rules() if "stat-card--negative" in sel]
@@ -774,7 +462,7 @@ class TestCss:
 
     def test_new_rules_do_not_hardcode_hex_colours(self):
         for selector, body in css_rules():
-            if "profile-net" in selector or "stat-card--negative" in selector:
+            if "profile-available" in selector or "stat-card--negative" in selector:
                 assert not re.search(
                     r"#[0-9a-fA-F]{3,8}\b", body
                 ), f"hex colour in rule {selector.strip()!r}"

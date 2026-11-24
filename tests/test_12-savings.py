@@ -49,7 +49,11 @@ TYPES = [
     "Emergency Fund",
     "Other",
 ]
-PAID_FROM = ["My account", "Salary deduction/employer"]
+PAID_FROM = [
+    "My account",
+    "Salary deduction/employer",
+    "Already saved before Spendly",
+]
 VALID = {
     "amount": "5000.50",
     "type": "SIP",
