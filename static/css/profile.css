@@ -258,25 +258,14 @@
     color: var(--ink);
 }
 
-.tx-edit {
-    display: inline-flex;
-    align-items: center;
-    min-height: 32px;
-    font-weight: 500;
-    color: var(--accent);
-    text-decoration: underline;
-    text-underline-offset: 0.2em;
-}
-
-.tx-edit:hover { color: var(--ink); }
-
 .tx-actions {
     display: inline-flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.25rem;
     white-space: nowrap;
 }
 
+.tx-edit,
 .tx-delete {
     display: inline-flex;
     align-items: center;
@@ -285,6 +274,12 @@
     min-height: 32px;
     border-radius: var(--radius-sm);
     color: var(--ink-muted);
+}
+
+.tx-edit:hover,
+.tx-edit:focus-visible {
+    background: var(--accent-light);
+    color: var(--accent);
 }
 
 .tx-delete:hover,
@@ -451,18 +446,14 @@
         text-align: right;
     }
 
-    .tx-edit {
-        min-width: 44px;
-        min-height: 44px;
-        justify-content: flex-end;
-    }
-
-    /* The negative margin aligns the icon, not its tap area, with the date. */
+    .tx-edit,
     .tx-delete {
         min-width: 44px;
         min-height: 44px;
-        margin-right: -14px;
     }
+
+    /* The negative margin aligns the icon, not its tap area, with the date. */
+    .tx-delete { margin-right: -14px; }
 
     .tx-table .tx-date {
         grid-area: date;
