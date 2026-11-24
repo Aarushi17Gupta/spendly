@@ -92,15 +92,22 @@
         </div>
     </form>
 
-    <section class="profile-net" aria-label="Income and net">
+    <section class="profile-available" aria-label="Income and available balance">
         <div class="stat-card">
             <span class="stat-label">Total Credits</span>
-            <span class="stat-value">{{ money(net_summary.total_credits) }}</span>
+            <span class="stat-value">{{ money(available_summary.total_credits) }}</span>
         </div>
-        <div class="stat-card stat-card--net{% if net_summary.net < 0 %} stat-card--negative{% endif %}">
-            <span class="stat-label">Net</span>
-            <span class="stat-value">{{ money(net_summary.net) }}</span>
-            <p class="section-note">Credits minus expenses. Savings are not included.</p>
+        <div class="stat-card stat-card--available{% if available_summary.available < 0 %} stat-card--negative{% endif %}">
+            <span class="stat-label">Available</span>
+            <span class="stat-value">{{ money(available_summary.available) }}</span>
+            <p class="section-note">Credits minus expenses and savings paid from your account.</p>
+            {% if available_summary.available < 0 %}
+            {% if available_summary.saved_from_account > 0 %}
+            <p class="section-note">Your expenses and savings are more than your credits for this period. Money from before this period, or not recorded here, is not included. If a saving is older than your records, edit it and choose Already saved before Spendly.</p>
+            {% else %}
+            <p class="section-note">You spent more than your credits for this period.</p>
+            {% endif %}
+            {% endif %}
         </div>
     </section>
 

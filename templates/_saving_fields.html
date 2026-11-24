@@ -1,11 +1,12 @@
 <div class="form-group">
     <label for="paid_from">Paid from</label>
-    <select id="paid_from" name="paid_from" class="form-input" required>
+    <select id="paid_from" name="paid_from" class="form-input" aria-describedby="paid-from-hint" required>
         <option value="" disabled {% if form.get('paid_from') not in paid_from_options %}selected{% endif %}>Select where it was paid from</option>
         {% for option in paid_from_options %}
         <option value="{{ option }}" {% if form.get('paid_from') == option %}selected{% endif %}>{{ option }}</option>
         {% endfor %}
     </select>
+    <p class="form-hint" id="paid-from-hint">Only savings paid from my account reduce your available balance.</p>
 </div>
 
 <div class="form-group">
