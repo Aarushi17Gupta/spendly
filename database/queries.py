@@ -2,10 +2,10 @@ import datetime
 
 from database.db import get_db
 
-
 # ------------------------------------------------------------------ #
 # SA2: User data                                                      #
 # ------------------------------------------------------------------ #
+
 
 def get_user_by_id(user_id):
     conn = get_db()
@@ -16,12 +16,17 @@ def get_user_by_id(user_id):
     if row is None:
         return None
     dt = datetime.datetime.fromisoformat(row["created_at"])
-    return {"name": row["name"], "email": row["email"], "member_since": dt.strftime("%B %Y")}
+    return {
+        "name": row["name"],
+        "email": row["email"],
+        "member_since": dt.strftime("%B %Y"),
+    }
 
 
 # ------------------------------------------------------------------ #
 # SA2: Summary stats                                                  #
 # ------------------------------------------------------------------ #
+
 
 def get_summary_stats(user_id, date_from=None, date_to=None):
     where, params = "WHERE user_id = ?", [user_id]
@@ -34,11 +39,14 @@ def get_summary_stats(user_id, date_from=None, date_to=None):
     conn = get_db()
     row = conn.execute(
         "SELECT COALESCE(SUM(amount), 0) AS total_spent, COUNT(*) AS transaction_count "
-        "FROM expenses " + where, params
+        "FROM expenses " + where,
+        params,
     ).fetchone()
     top = conn.execute(
-        "SELECT category FROM expenses " + where +
-        " GROUP BY category ORDER BY SUM(amount) DESC LIMIT 1", params
+        "SELECT category FROM expenses "
+        + where
+        + " GROUP BY category ORDER BY SUM(amount) DESC LIMIT 1",
+        params,
     ).fetchone()
     conn.close()
     return {
@@ -52,6 +60,7 @@ def get_summary_stats(user_id, date_from=None, date_to=None):
 # SA1: Transaction history                                            #
 # ------------------------------------------------------------------ #
 
+
 def get_recent_transactions(user_id, limit=10, date_from=None, date_to=None):
     where, params = "WHERE user_id = ?", [user_id]
     if date_from:
@@ -63,7 +72,7 @@ def get_recent_transactions(user_id, limit=10, date_from=None, date_to=None):
     params.append(limit)
     conn = get_db()
     rows = conn.execute(
-        "SELECT date, description, category, amount "
+        "SELECT id, date, description, category, amount "
         "FROM expenses " + where + " ORDER BY date DESC LIMIT ?",
         params,
     ).fetchall()
@@ -71,19 +80,23 @@ def get_recent_transactions(user_id, limit=10, date_from=None, date_to=None):
     result = []
     for row in rows:
         dt = datetime.datetime.strptime(row["date"], "%Y-%m-%d")
-        result.append({
-            "date_iso": row["date"],
-            "date": dt.strftime("%B %-d, %Y"),
-            "description": row["description"] or "",
-            "category": row["category"],
-            "amount": row["amount"],
-        })
+        result.append(
+            {
+                "id": row["id"],
+                "date_iso": row["date"],
+                "date": dt.strftime("%B %-d, %Y"),
+                "description": row["description"] or "",
+                "category": row["category"],
+                "amount": row["amount"],
+            }
+        )
     return result
 
 
 # ------------------------------------------------------------------ #
 # SA3: Category breakdown                                             #
 # ------------------------------------------------------------------ #
+
 
 def get_category_breakdown(user_id, date_from=None, date_to=None):
     where, params = "WHERE user_id = ?", [user_id]

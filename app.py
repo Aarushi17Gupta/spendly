@@ -2,20 +2,51 @@ import datetime
 import math
 import os
 
-from flask import Flask, flash, redirect, render_template, request, session, url_for
+from flask import (
+    Flask,
+    abort,
+    flash,
+    redirect,
+    render_template,
+    request,
+    session,
+    url_for,
+)
 from werkzeug.security import check_password_hash
 
-from database.db import add_expense as db_add_expense, create_user, get_db, get_user_by_email, init_db, seed_db
+from database.db import (
+    add_expense as db_add_expense,
+    create_user,
+    get_db,
+    get_expense,
+    get_user_by_email,
+    init_db,
+    seed_db,
+    update_expense as db_update_expense,
+)
 from database.db import get_user_by_id as db_get_user_by_id
-from database.queries import get_user_by_id, get_summary_stats, get_recent_transactions, get_category_breakdown
+from database.queries import (
+    get_user_by_id,
+    get_summary_stats,
+    get_recent_transactions,
+    get_category_breakdown,
+)
 
-CATEGORIES = ["Food", "Transport", "Bills", "Health", "Entertainment", "Shopping", "Other"]
+CATEGORIES = [
+    "Food",
+    "Transport",
+    "Bills",
+    "Health",
+    "Entertainment",
+    "Shopping",
+    "Other",
+]
 MIN_AMOUNT = 0.01
 MAX_AMOUNT = 10_000_000  # ₹1 crore
 MAX_DESCRIPTION_LENGTH = 200
 
 app = Flask(__name__)
-app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret')
+app.secret_key = os.environ.get("SECRET_KEY", "dev-secret")
 
 with app.app_context():
     init_db()
@@ -25,6 +56,7 @@ with app.app_context():
 # ------------------------------------------------------------------ #
 # Helpers                                                             #
 # ------------------------------------------------------------------ #
+
 
 def _valid_date(s):
     """Return s unchanged if it is a canonical YYYY-MM-DD date, else None."""
@@ -84,10 +116,23 @@ def _expense_form_error(form):
     return None
 
 
-def _render_expense_form(form):
-    return render_template("add_expense.html", categories=CATEGORIES, form=form,
-                           min_amount=MIN_AMOUNT, max_amount=MAX_AMOUNT,
-                           max_description_length=MAX_DESCRIPTION_LENGTH)
+def _submitted_expense_form():
+    return {
+        field: request.form.get(field, "").strip()
+        for field in ("amount", "category", "date", "description")
+    }
+
+
+def _render_expense_form(form, template="add_expense.html", **context):
+    return render_template(
+        template,
+        categories=CATEGORIES,
+        form=form,
+        min_amount=MIN_AMOUNT,
+        max_amount=MAX_AMOUNT,
+        max_description_length=MAX_DESCRIPTION_LENGTH,
+        **context,
+    )
 
 
 @app.context_processor
@@ -99,6 +144,7 @@ def inject_current_user():
 # ------------------------------------------------------------------ #
 # Routes                                                             #
 # ------------------------------------------------------------------ #
+
 
 @app.route("/")
 def landing():
@@ -175,6 +221,7 @@ def privacy():
 # Placeholder routes — students will implement these                  #
 # ------------------------------------------------------------------ #
 
+
 @app.route("/logout")
 def logout():
     session.clear()
@@ -201,18 +248,25 @@ def profile():
     # ---- end SA2 ------------------------------------------------- #
 
     # ---- SA1: transactions list ----------------------------------- #
-    transactions = get_recent_transactions(user_id, date_from=date_from, date_to=date_to)
+    transactions = get_recent_transactions(
+        user_id, date_from=date_from, date_to=date_to
+    )
     # ---- end SA1 ------------------------------------------------- #
 
     # ---- SA3: categories list ------------------------------------ #
     categories = get_category_breakdown(user_id, date_from=date_from, date_to=date_to)
     # ---- end SA3 ------------------------------------------------- #
 
-    return render_template("profile.html",
-                           user=user, stats=stats,
-                           transactions=transactions, categories=categories,
-                           date_from=date_from, date_to=date_to,
-                           period_label=_period_label(date_from, date_to))
+    return render_template(
+        "profile.html",
+        user=user,
+        stats=stats,
+        transactions=transactions,
+        categories=categories,
+        date_from=date_from,
+        date_to=date_to,
+        period_label=_period_label(date_from, date_to),
+    )
 
 
 @app.route("/analytics")
@@ -229,26 +283,63 @@ def add_expense():
         return redirect(url_for("login"))
 
     if request.method == "POST":
-        form = {
-            field: request.form.get(field, "").strip()
-            for field in ("amount", "category", "date", "description")
-        }
+        form = _submitted_expense_form()
         error = _expense_form_error(form)
         if error:
             flash(error, "error")
             return _render_expense_form(form)
 
-        db_add_expense(user_id, float(form["amount"]), form["category"],
-                       form["date"], form["description"] or None)
+        db_add_expense(
+            user_id,
+            float(form["amount"]),
+            form["category"],
+            form["date"],
+            form["description"] or None,
+        )
         flash("Expense added successfully.", "success")
         return redirect(url_for("profile"))
 
     return _render_expense_form({})
 
 
-@app.route("/expenses/<int:id>/edit")
+# The bound is SQLite's largest integer; bigger ids get a 404, not an OverflowError.
+@app.route("/expenses/<int(max=9223372036854775807):id>/edit", methods=["GET", "POST"])
 def edit_expense(id):
-    return "Edit expense — coming in Step 8"
+    user_id = _current_user_id()
+    if user_id is None:
+        return redirect(url_for("login"))
+
+    expense = get_expense(id, user_id)
+    if expense is None:
+        abort(404)
+
+    if request.method == "POST":
+        form = _submitted_expense_form()
+        error = _expense_form_error(form)
+        if error:
+            flash(error, "error")
+            return _render_expense_form(form, "edit_expense.html", expense_id=id)
+
+        updated = db_update_expense(
+            id,
+            user_id,
+            float(form["amount"]),
+            form["category"],
+            form["date"],
+            form["description"] or None,
+        )
+        if not updated:
+            abort(404)
+        flash("Expense updated successfully.", "success")
+        return redirect(url_for("profile"))
+
+    form = {
+        "amount": f"{expense['amount']:.2f}",
+        "category": expense["category"],
+        "date": expense["date"],
+        "description": expense["description"] or "",
+    }
+    return _render_expense_form(form, "edit_expense.html", expense_id=id)
 
 
 @app.route("/expenses/<int:id>/delete")
