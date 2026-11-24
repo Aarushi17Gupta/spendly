@@ -462,7 +462,7 @@ def test_profile_stats_and_breakdown_reflect_edit_with_multiple_rows(
     auth_client.post(url(expense_id), data={**VALID, "category": "Bills"})
     html = auth_client.get("/profile").get_data(as_text=True)
     assert stat_value(html, "Total Spent") == "₹109.90"
-    assert stat_value(html, "Transactions") == "2"
+    assert stat_value(html, "Expenses") == "2"
     assert stat_value(html, "Top Category") == "Bills"
     assert '<span class="category-name">Bills</span>' in html
     assert '<span class="category-name">Food</span>' not in html
@@ -472,7 +472,7 @@ def test_profile_stats_and_breakdown_reflect_edit_with_multiple_rows(
 def test_profile_transaction_count_is_exact_label_value(auth_client, expense_id):
     auth_client.post(url(expense_id), data=VALID)
     html = auth_client.get("/profile").get_data(as_text=True)
-    assert stat_value(html, "Transactions") == "1"
+    assert stat_value(html, "Expenses") == "1"
     assert stat_value(html, "Total Spent") == "₹99.90"
     assert stat_value(html, "Top Category") == "Health"
 

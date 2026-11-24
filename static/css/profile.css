@@ -179,6 +179,22 @@
     color: var(--paper-card);
 }
 
+.profile-net {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.25rem;
+}
+
+/* Keeps both values level; only the Net card has a note. */
+.profile-net .stat-card { justify-content: flex-start; }
+
+/* Stops a line break between the minus sign and the symbol. */
+.profile-net .stat-value { white-space: nowrap; }
+
+.profile-net .section-note { margin-top: 0; }
+
+.stat-card--negative .stat-value { color: var(--danger); }
+
 /* ------------------------------------------------------------------ */
 /* Section wrapper                                                     */
 /* ------------------------------------------------------------------ */
@@ -436,6 +452,11 @@
 
     .profile-stats {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 1rem;
+    }
+
+    .profile-net {
+        grid-template-columns: minmax(0, 1fr);
         gap: 1rem;
     }
 

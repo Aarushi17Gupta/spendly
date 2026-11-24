@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/date-filter.css') }}">
 {% endblock %}
 
-{% macro money(value) %}₹{{ "{:,.2f}".format(value) }}{% endmacro %}
+{% macro money(value) %}{% if value < 0 %}-{% endif %}₹{{ "{:,.2f}".format(value|abs) }}{% endmacro %}
 
 {% macro icon(path) %}<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="{{ path }}"/></svg>{% endmacro %}
 
@@ -92,6 +92,18 @@
         </div>
     </form>
 
+    <section class="profile-net" aria-label="Income and net">
+        <div class="stat-card">
+            <span class="stat-label">Total Credits</span>
+            <span class="stat-value">{{ money(net_summary.total_credits) }}</span>
+        </div>
+        <div class="stat-card stat-card--net{% if net_summary.net < 0 %} stat-card--negative{% endif %}">
+            <span class="stat-label">Net</span>
+            <span class="stat-value">{{ money(net_summary.net) }}</span>
+            <p class="section-note">Credits minus expenses. Savings are not included.</p>
+        </div>
+    </section>
+
     <section class="profile-stats" aria-label="Summary">
         <div class="stat-card stat-card--total">
             <span class="stat-label">Total Spent</span>
@@ -102,7 +114,7 @@
             <span class="stat-value">{{ money(savings_summary.total) }}</span>
         </div>
         <div class="stat-card">
-            <span class="stat-label">Transactions</span>
+            <span class="stat-label">Expenses</span>
             <span class="stat-value">{{ stats.transaction_count }}</span>
         </div>
         <div class="stat-card">
@@ -113,7 +125,7 @@
 
     <div class="profile-grid">
         <section class="profile-section" aria-labelledby="tx-heading">
-            <h2 class="section-title" id="tx-heading">Recent Transactions</h2>
+            <h2 class="section-title" id="tx-heading">Recent Expenses</h2>
             {% if transactions %}
             {{ entry_table(transactions, stats.transaction_count, 'tx-heading', 'category', 'edit_expense', 'delete_expense') }}
             {% else %}
@@ -122,7 +134,7 @@
         </section>
 
         <section class="profile-section" aria-labelledby="cat-heading">
-            <h2 class="section-title" id="cat-heading">By Category</h2>
+            <h2 class="section-title" id="cat-heading">Expenses by Category</h2>
             {% if categories %}
             <ul class="category-list">
                 {% for cat in categories %}
