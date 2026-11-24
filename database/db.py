@@ -41,16 +41,12 @@ def init_db():
 
 def get_user_by_email(email):
     with closing(get_db()) as conn:
-        return conn.execute(
-            "SELECT * FROM users WHERE email = ?", (email,)
-        ).fetchone()
+        return conn.execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
 
 
 def get_user_by_id(user_id):
     with closing(get_db()) as conn:
-        return conn.execute(
-            "SELECT * FROM users WHERE id = ?", (user_id,)
-        ).fetchone()
+        return conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
 
 
 def create_user(name, email, password):
@@ -82,20 +78,26 @@ def seed_db():
 
         # All days are <= 28, so they exist in every month.
         sample_expenses = [
-            (45.50,  "Food",          1,  "Grocery shopping"),
-            (12.00,  "Transport",     3,  "Bus pass"),
-            (120.00, "Bills",         5,  "Electric bill"),
-            (30.00,  "Health",        8,  "Vitamins"),
-            (15.00,  "Entertainment", 10, "Movie ticket"),
-            (65.00,  "Shopping",      13, "New shoes"),
-            (8.50,   "Food",          17, "Coffee and snacks"),
-            (25.00,  "Other",         20, "Miscellaneous"),
+            (45.50, "Food", 1, "Grocery shopping"),
+            (12.00, "Transport", 3, "Bus pass"),
+            (120.00, "Bills", 5, "Electric bill"),
+            (30.00, "Health", 8, "Vitamins"),
+            (15.00, "Entertainment", 10, "Movie ticket"),
+            (65.00, "Shopping", 13, "New shoes"),
+            (8.50, "Food", 17, "Coffee and snacks"),
+            (25.00, "Other", 20, "Miscellaneous"),
         ]
         today = datetime.date.today()
         conn.executemany(
             "INSERT INTO expenses (user_id, amount, category, date, description) VALUES (?, ?, ?, ?, ?)",
             [
-                (user_id, amount, category, today.replace(day=day).isoformat(), description)
+                (
+                    user_id,
+                    amount,
+                    category,
+                    today.replace(day=day).isoformat(),
+                    description,
+                )
                 for amount, category, day, description in sample_expenses
             ],
         )
