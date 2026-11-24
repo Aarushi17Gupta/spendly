@@ -17,26 +17,35 @@ from werkzeug.security import check_password_hash
 from database.db import (
     add_credit as db_add_credit,
     add_expense as db_add_expense,
+    add_saving as db_add_saving,
     create_user,
     delete_credit as db_delete_credit,
     delete_expense as db_delete_expense,
+    delete_saving as db_delete_saving,
     get_credit,
     get_db,
     get_expense,
+    get_saving,
     get_user_by_email,
     init_db,
     seed_db,
     update_credit as db_update_credit,
     update_expense as db_update_expense,
+    update_saving as db_update_saving,
 )
 from database.db import get_user_by_id as db_get_user_by_id
 from database.queries import (
+    OWN_ACCOUNT,
+    format_date,
     get_user_by_id,
     get_summary_stats,
     get_recent_transactions,
     get_category_breakdown,
     get_recent_credits,
     count_credits,
+    get_recent_savings,
+    get_savings_breakdown,
+    get_savings_summary,
 )
 
 CATEGORIES = [
@@ -49,8 +58,30 @@ CATEGORIES = [
     "Other",
 ]
 CREDIT_SOURCES = ["Salary", "Freelance", "Interest", "Refund", "Gift", "Other"]
+SAVING_TYPES = [
+    "FD",
+    "RD",
+    "SIP",
+    "EPF",
+    "VPF",
+    "PPF",
+    "NPS",
+    "Mutual Fund",
+    "Stocks/ETF",
+    "Bonds",
+    "Sukanya Samriddhi",
+    "NSC",
+    "KVP",
+    "SCSS",
+    "Post Office MIS",
+    "Gold",
+    "Emergency Fund",
+    "Other",
+]
+# Salary deductions such as EPF never reach the user's account.
+PAID_FROM_OPTIONS = [OWN_ACCOUNT, "Salary deduction/employer"]
 
-# The dropdown that differs between the expense and credit forms.
+# The dropdown that differs between the expense, credit and saving forms.
 EXPENSE_CHOICE = {
     "name": "category",
     "label": "Category",
@@ -63,10 +94,21 @@ CREDIT_CHOICE = {
     "placeholder": "Select a source",
     "options": CREDIT_SOURCES,
 }
+SAVING_CHOICE = {
+    "name": "type",
+    "label": "Type",
+    "placeholder": "Select a type",
+    "options": SAVING_TYPES,
+}
+SAVING_EXTRA_FIELDS = ("paid_from", "institution", "interest_rate", "maturity_date")
 
+# SQLite's largest integer; bigger ids in a URL get a 404.
+MAX_ROW_ID = 2**63 - 1
 MIN_AMOUNT = 0.01
 MAX_AMOUNT = 10_000_000  # ₹1 crore
 MAX_DESCRIPTION_LENGTH = 200
+MAX_INSTITUTION_LENGTH = 100
+MAX_INTEREST_RATE = 100
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "dev-secret")
@@ -108,12 +150,6 @@ def _period_label(date_from, date_to):
     return "All time"
 
 
-def _display_date(value):
-    """Format an ISO date the same way as the profile rows."""
-    day = datetime.date.fromisoformat(value)
-    return f"{day:%B} {day.day}, {day.year}"
-
-
 def _current_user_id():
     """Return the logged-in user's id, clearing sessions of deleted users."""
     user_id = session.get("user_id")
@@ -126,7 +162,7 @@ def _current_user_id():
 
 
 def _entry_form_error(form, choice):
-    """Return the first validation error for an expense or credit, or None."""
+    """Return the first validation error for a submitted entry, or None."""
     try:
         amount = float(form["amount"])
     except ValueError:
@@ -145,10 +181,10 @@ def _entry_form_error(form, choice):
     return None
 
 
-def _submitted_entry_form(choice):
+def _submitted_entry_form(choice, extra_fields=()):
     return {
         field: request.form.get(field, "").strip()
-        for field in ("amount", choice["name"], "date", "description")
+        for field in ("amount", choice["name"], "date", "description", *extra_fields)
     }
 
 
@@ -160,6 +196,77 @@ def _render_entry_form(template, form, choice, **context):
         min_amount=MIN_AMOUNT,
         max_amount=MAX_AMOUNT,
         max_description_length=MAX_DESCRIPTION_LENGTH,
+        **context,
+    )
+
+
+def _saving_form_error(form):
+    """Return the first validation error for a saving, or None."""
+    error = _entry_form_error(form, SAVING_CHOICE)
+    if error:
+        return error
+    if form["paid_from"] not in PAID_FROM_OPTIONS:
+        return "Please select a valid paid from option."
+    if len(form["institution"]) > MAX_INSTITUTION_LENGTH:
+        return (
+            f"Institution or scheme must be {MAX_INSTITUTION_LENGTH} "
+            "characters or fewer."
+        )
+    if form["interest_rate"]:
+        try:
+            rate = float(form["interest_rate"])
+        except ValueError:
+            rate = math.nan
+        # NaN fails this comparison, so it is rejected too.
+        if not 0 <= rate <= MAX_INTEREST_RATE:
+            return f"Interest rate must be between 0 and {MAX_INTEREST_RATE}."
+    if form["maturity_date"]:
+        if not _valid_date(form["maturity_date"]):
+            return "Maturity date must be a valid date (YYYY-MM-DD)."
+        if form["maturity_date"] < form["date"]:
+            return "Maturity date cannot be before the date."
+    return None
+
+
+def _saving_values(form):
+    """Convert a validated saving form into database helper arguments."""
+    return {
+        "amount": float(form["amount"]),
+        "type": form["type"],
+        "date": form["date"],
+        "paid_from": form["paid_from"],
+        "description": form["description"] or None,
+        "institution": form["institution"] or None,
+        "interest_rate": (
+            float(form["interest_rate"]) if form["interest_rate"] else None
+        ),
+        "maturity_date": form["maturity_date"] or None,
+    }
+
+
+def _saving_form_from_row(saving):
+    """Convert a saving row into form values."""
+    rate = saving["interest_rate"]
+    return {
+        "amount": f"{saving['amount']:.2f}",
+        "type": saving["type"],
+        "date": saving["date"],
+        "description": saving["description"] or "",
+        "paid_from": saving["paid_from"],
+        "institution": saving["institution"] or "",
+        "interest_rate": "" if rate is None else str(rate),
+        "maturity_date": saving["maturity_date"] or "",
+    }
+
+
+def _render_saving_form(template, form, **context):
+    return _render_entry_form(
+        template,
+        form,
+        SAVING_CHOICE,
+        paid_from_options=PAID_FROM_OPTIONS,
+        max_institution_length=MAX_INSTITUTION_LENGTH,
+        max_interest_rate=MAX_INTEREST_RATE,
         **context,
     )
 
@@ -289,6 +396,12 @@ def profile():
     credits = get_recent_credits(user_id, date_from=date_from, date_to=date_to)
     credit_count = count_credits(user_id, date_from=date_from, date_to=date_to)
 
+    savings = get_recent_savings(user_id, date_from=date_from, date_to=date_to)
+    savings_summary = get_savings_summary(user_id, date_from=date_from, date_to=date_to)
+    savings_by_type = get_savings_breakdown(
+        user_id, date_from=date_from, date_to=date_to
+    )
+
     return render_template(
         "profile.html",
         user=user,
@@ -297,6 +410,9 @@ def profile():
         categories=categories,
         credits=credits,
         credit_count=credit_count,
+        savings=savings,
+        savings_summary=savings_summary,
+        savings_by_type=savings_by_type,
         date_from=date_from,
         date_to=date_to,
         period_label=_period_label(date_from, date_to),
@@ -336,8 +452,7 @@ def add_expense():
     return _render_entry_form("add_expense.html", {}, EXPENSE_CHOICE)
 
 
-# Expense ids are bounded by SQLite's largest integer; bigger ids get a 404.
-@app.route("/expenses/<int(max=9223372036854775807):id>/edit", methods=["GET", "POST"])
+@app.route(f"/expenses/<int(max={MAX_ROW_ID}):id>/edit", methods=["GET", "POST"])
 def edit_expense(id):
     user_id = _current_user_id()
     if user_id is None:
@@ -378,9 +493,7 @@ def edit_expense(id):
     return _render_entry_form("edit_expense.html", form, EXPENSE_CHOICE, expense_id=id)
 
 
-@app.route(
-    "/expenses/<int(max=9223372036854775807):id>/delete", methods=["GET", "POST"]
-)
+@app.route(f"/expenses/<int(max={MAX_ROW_ID}):id>/delete", methods=["GET", "POST"])
 def delete_expense(id):
     user_id = _current_user_id()
     if user_id is None:
@@ -399,7 +512,7 @@ def delete_expense(id):
     return render_template(
         "delete_expense.html",
         expense=expense,
-        expense_date=_display_date(expense["date"]),
+        expense_date=format_date(expense["date"]),
     )
 
 
@@ -429,8 +542,7 @@ def add_credit():
     return _render_entry_form("add_credit.html", {}, CREDIT_CHOICE)
 
 
-# Credit ids are bounded like expense ids.
-@app.route("/credits/<int(max=9223372036854775807):id>/edit", methods=["GET", "POST"])
+@app.route(f"/credits/<int(max={MAX_ROW_ID}):id>/edit", methods=["GET", "POST"])
 def edit_credit(id):
     user_id = _current_user_id()
     if user_id is None:
@@ -471,7 +583,7 @@ def edit_credit(id):
     return _render_entry_form("edit_credit.html", form, CREDIT_CHOICE, credit_id=id)
 
 
-@app.route("/credits/<int(max=9223372036854775807):id>/delete", methods=["GET", "POST"])
+@app.route(f"/credits/<int(max={MAX_ROW_ID}):id>/delete", methods=["GET", "POST"])
 def delete_credit(id):
     user_id = _current_user_id()
     if user_id is None:
@@ -490,7 +602,78 @@ def delete_credit(id):
     return render_template(
         "delete_credit.html",
         credit=credit,
-        credit_date=_display_date(credit["date"]),
+        credit_date=format_date(credit["date"]),
+    )
+
+
+@app.route("/savings/add", methods=["GET", "POST"])
+def add_saving():
+    user_id = _current_user_id()
+    if user_id is None:
+        return redirect(url_for("login"))
+
+    if request.method == "POST":
+        form = _submitted_entry_form(SAVING_CHOICE, SAVING_EXTRA_FIELDS)
+        error = _saving_form_error(form)
+        if error:
+            flash(error, "error")
+            return _render_saving_form("add_saving.html", form)
+
+        db_add_saving(user_id, **_saving_values(form))
+        flash("Saving added successfully.", "success")
+        return redirect(url_for("profile"))
+
+    return _render_saving_form("add_saving.html", {"paid_from": OWN_ACCOUNT})
+
+
+@app.route(f"/savings/<int(max={MAX_ROW_ID}):id>/edit", methods=["GET", "POST"])
+def edit_saving(id):
+    user_id = _current_user_id()
+    if user_id is None:
+        return redirect(url_for("login"))
+
+    saving = get_saving(id, user_id)
+    if saving is None:
+        abort(404)
+
+    if request.method == "POST":
+        form = _submitted_entry_form(SAVING_CHOICE, SAVING_EXTRA_FIELDS)
+        error = _saving_form_error(form)
+        if error:
+            flash(error, "error")
+            return _render_saving_form("edit_saving.html", form, saving_id=id)
+
+        if not db_update_saving(id, user_id, **_saving_values(form)):
+            abort(404)
+        flash("Saving updated successfully.", "success")
+        return redirect(url_for("profile"))
+
+    form = _saving_form_from_row(saving)
+    return _render_saving_form("edit_saving.html", form, saving_id=id)
+
+
+@app.route(f"/savings/<int(max={MAX_ROW_ID}):id>/delete", methods=["GET", "POST"])
+def delete_saving(id):
+    user_id = _current_user_id()
+    if user_id is None:
+        return redirect(url_for("login"))
+
+    saving = get_saving(id, user_id)
+    if saving is None:
+        abort(404)
+
+    if request.method == "POST":
+        if not db_delete_saving(id, user_id):
+            abort(404)
+        flash("Saving deleted successfully.", "success")
+        return redirect(url_for("profile"))
+
+    maturity = saving["maturity_date"]
+    return render_template(
+        "delete_saving.html",
+        saving=saving,
+        saving_date=format_date(saving["date"]),
+        maturity_date=format_date(maturity) if maturity else None,
     )
 
 
