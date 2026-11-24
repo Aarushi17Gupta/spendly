@@ -15,14 +15,18 @@ from flask import (
 from werkzeug.security import check_password_hash
 
 from database.db import (
+    add_credit as db_add_credit,
     add_expense as db_add_expense,
     create_user,
+    delete_credit as db_delete_credit,
     delete_expense as db_delete_expense,
+    get_credit,
     get_db,
     get_expense,
     get_user_by_email,
     init_db,
     seed_db,
+    update_credit as db_update_credit,
     update_expense as db_update_expense,
 )
 from database.db import get_user_by_id as db_get_user_by_id
@@ -31,6 +35,8 @@ from database.queries import (
     get_summary_stats,
     get_recent_transactions,
     get_category_breakdown,
+    get_recent_credits,
+    count_credits,
 )
 
 CATEGORIES = [
@@ -42,6 +48,22 @@ CATEGORIES = [
     "Shopping",
     "Other",
 ]
+CREDIT_SOURCES = ["Salary", "Freelance", "Interest", "Refund", "Gift", "Other"]
+
+# The dropdown that differs between the expense and credit forms.
+EXPENSE_CHOICE = {
+    "name": "category",
+    "label": "Category",
+    "placeholder": "Select a category",
+    "options": CATEGORIES,
+}
+CREDIT_CHOICE = {
+    "name": "source",
+    "label": "Source",
+    "placeholder": "Select a source",
+    "options": CREDIT_SOURCES,
+}
+
 MIN_AMOUNT = 0.01
 MAX_AMOUNT = 10_000_000  # ₹1 crore
 MAX_DESCRIPTION_LENGTH = 200
@@ -86,6 +108,12 @@ def _period_label(date_from, date_to):
     return "All time"
 
 
+def _display_date(value):
+    """Format an ISO date the same way as the profile rows."""
+    day = datetime.date.fromisoformat(value)
+    return f"{day:%B} {day.day}, {day.year}"
+
+
 def _current_user_id():
     """Return the logged-in user's id, clearing sessions of deleted users."""
     user_id = session.get("user_id")
@@ -97,8 +125,8 @@ def _current_user_id():
     return user_id
 
 
-def _expense_form_error(form):
-    """Return the first validation error for an expense form, or None."""
+def _entry_form_error(form, choice):
+    """Return the first validation error for an expense or credit, or None."""
     try:
         amount = float(form["amount"])
     except ValueError:
@@ -108,8 +136,8 @@ def _expense_form_error(form):
         return "Amount must be a positive number."
     if not MIN_AMOUNT <= amount <= MAX_AMOUNT:
         return "Amount must be between ₹0.01 and ₹1,00,00,000."
-    if form["category"] not in CATEGORIES:
-        return "Please select a valid category."
+    if form[choice["name"]] not in choice["options"]:
+        return f"Please select a valid {choice['name']}."
     if not _valid_date(form["date"]):
         return "Date must be a valid date (YYYY-MM-DD)."
     if len(form["description"]) > MAX_DESCRIPTION_LENGTH:
@@ -117,17 +145,17 @@ def _expense_form_error(form):
     return None
 
 
-def _submitted_expense_form():
+def _submitted_entry_form(choice):
     return {
         field: request.form.get(field, "").strip()
-        for field in ("amount", "category", "date", "description")
+        for field in ("amount", choice["name"], "date", "description")
     }
 
 
-def _render_expense_form(form, template="add_expense.html", **context):
+def _render_entry_form(template, form, choice, **context):
     return render_template(
         template,
-        categories=CATEGORIES,
+        choice=choice,
         form=form,
         min_amount=MIN_AMOUNT,
         max_amount=MAX_AMOUNT,
@@ -258,12 +286,17 @@ def profile():
     categories = get_category_breakdown(user_id, date_from=date_from, date_to=date_to)
     # ---- end SA3 ------------------------------------------------- #
 
+    credits = get_recent_credits(user_id, date_from=date_from, date_to=date_to)
+    credit_count = count_credits(user_id, date_from=date_from, date_to=date_to)
+
     return render_template(
         "profile.html",
         user=user,
         stats=stats,
         transactions=transactions,
         categories=categories,
+        credits=credits,
+        credit_count=credit_count,
         date_from=date_from,
         date_to=date_to,
         period_label=_period_label(date_from, date_to),
@@ -284,11 +317,11 @@ def add_expense():
         return redirect(url_for("login"))
 
     if request.method == "POST":
-        form = _submitted_expense_form()
-        error = _expense_form_error(form)
+        form = _submitted_entry_form(EXPENSE_CHOICE)
+        error = _entry_form_error(form, EXPENSE_CHOICE)
         if error:
             flash(error, "error")
-            return _render_expense_form(form)
+            return _render_entry_form("add_expense.html", form, EXPENSE_CHOICE)
 
         db_add_expense(
             user_id,
@@ -300,7 +333,7 @@ def add_expense():
         flash("Expense added successfully.", "success")
         return redirect(url_for("profile"))
 
-    return _render_expense_form({})
+    return _render_entry_form("add_expense.html", {}, EXPENSE_CHOICE)
 
 
 # Expense ids are bounded by SQLite's largest integer; bigger ids get a 404.
@@ -315,11 +348,13 @@ def edit_expense(id):
         abort(404)
 
     if request.method == "POST":
-        form = _submitted_expense_form()
-        error = _expense_form_error(form)
+        form = _submitted_entry_form(EXPENSE_CHOICE)
+        error = _entry_form_error(form, EXPENSE_CHOICE)
         if error:
             flash(error, "error")
-            return _render_expense_form(form, "edit_expense.html", expense_id=id)
+            return _render_entry_form(
+                "edit_expense.html", form, EXPENSE_CHOICE, expense_id=id
+            )
 
         updated = db_update_expense(
             id,
@@ -340,7 +375,7 @@ def edit_expense(id):
         "date": expense["date"],
         "description": expense["description"] or "",
     }
-    return _render_expense_form(form, "edit_expense.html", expense_id=id)
+    return _render_entry_form("edit_expense.html", form, EXPENSE_CHOICE, expense_id=id)
 
 
 @app.route(
@@ -361,12 +396,101 @@ def delete_expense(id):
         flash("Expense deleted successfully.", "success")
         return redirect(url_for("profile"))
 
-    day = datetime.date.fromisoformat(expense["date"])
     return render_template(
         "delete_expense.html",
         expense=expense,
-        # Same format as the profile rows.
-        expense_date=f"{day:%B} {day.day}, {day.year}",
+        expense_date=_display_date(expense["date"]),
+    )
+
+
+@app.route("/credits/add", methods=["GET", "POST"])
+def add_credit():
+    user_id = _current_user_id()
+    if user_id is None:
+        return redirect(url_for("login"))
+
+    if request.method == "POST":
+        form = _submitted_entry_form(CREDIT_CHOICE)
+        error = _entry_form_error(form, CREDIT_CHOICE)
+        if error:
+            flash(error, "error")
+            return _render_entry_form("add_credit.html", form, CREDIT_CHOICE)
+
+        db_add_credit(
+            user_id,
+            float(form["amount"]),
+            form["source"],
+            form["date"],
+            form["description"] or None,
+        )
+        flash("Credit added successfully.", "success")
+        return redirect(url_for("profile"))
+
+    return _render_entry_form("add_credit.html", {}, CREDIT_CHOICE)
+
+
+# Credit ids are bounded like expense ids.
+@app.route("/credits/<int(max=9223372036854775807):id>/edit", methods=["GET", "POST"])
+def edit_credit(id):
+    user_id = _current_user_id()
+    if user_id is None:
+        return redirect(url_for("login"))
+
+    credit = get_credit(id, user_id)
+    if credit is None:
+        abort(404)
+
+    if request.method == "POST":
+        form = _submitted_entry_form(CREDIT_CHOICE)
+        error = _entry_form_error(form, CREDIT_CHOICE)
+        if error:
+            flash(error, "error")
+            return _render_entry_form(
+                "edit_credit.html", form, CREDIT_CHOICE, credit_id=id
+            )
+
+        updated = db_update_credit(
+            id,
+            user_id,
+            float(form["amount"]),
+            form["source"],
+            form["date"],
+            form["description"] or None,
+        )
+        if not updated:
+            abort(404)
+        flash("Credit updated successfully.", "success")
+        return redirect(url_for("profile"))
+
+    form = {
+        "amount": f"{credit['amount']:.2f}",
+        "source": credit["source"],
+        "date": credit["date"],
+        "description": credit["description"] or "",
+    }
+    return _render_entry_form("edit_credit.html", form, CREDIT_CHOICE, credit_id=id)
+
+
+@app.route("/credits/<int(max=9223372036854775807):id>/delete", methods=["GET", "POST"])
+def delete_credit(id):
+    user_id = _current_user_id()
+    if user_id is None:
+        return redirect(url_for("login"))
+
+    credit = get_credit(id, user_id)
+    if credit is None:
+        abort(404)
+
+    if request.method == "POST":
+        if not db_delete_credit(id, user_id):
+            abort(404)
+        flash("Credit deleted successfully.", "success")
+        return redirect(url_for("profile"))
+
+    return render_template(
+        "delete_credit.html",
+        credit=credit,
+        credit_date=_display_date(credit["date"]),
     )
 
 

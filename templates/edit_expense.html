@@ -25,7 +25,7 @@
             {% endwith %}
 
             <form method="POST" action="{{ url_for('edit_expense', id=expense_id) }}">
-                {% include "_expense_fields.html" %}
+                {% include "_entry_fields.html" %}
 
                 <button type="submit" class="btn-submit">Save Changes</button>
             </form>
