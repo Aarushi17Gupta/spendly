@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}Delete Saving — Spendly{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/add_expense.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/delete_expense.css') }}">
+{% endblock %}
+
+{% block content %}
+<section class="add-expense-section">
+    <div class="add-expense-container">
+
+        <div class="add-expense-header">
+            <h1 class="add-expense-title">Delete Saving</h1>
+            <p class="add-expense-subtitle">Check the details before deleting</p>
+        </div>
+
+        <div class="add-expense-card">
+            <dl class="expense-summary">
+                <div>
+                    <dt>Amount</dt>
+                    <dd>₹{{ "{:,.2f}".format(saving.amount) }}</dd>
+                </div>
+                <div>
+                    <dt>Type</dt>
+                    <dd>{{ saving.type }}</dd>
+                </div>
+                <div>
+                    <dt>Date</dt>
+                    <dd><time datetime="{{ saving.date }}">{{ saving_date }}</time></dd>
+                </div>
+                <div>
+                    <dt>Description</dt>
+                    <dd>{{ saving.description or 'No description' }}</dd>
+                </div>
+                <div>
+                    <dt>Paid from</dt>
+                    <dd>{{ saving.paid_from }}</dd>
+                </div>
+                {% if saving.institution %}
+                <div>
+                    <dt>Institution or scheme</dt>
+                    <dd>{{ saving.institution }}</dd>
+                </div>
+                {% endif %}
+                {% if saving.interest_rate is not none %}
+                <div>
+                    <dt>Interest rate</dt>
+                    <dd>{{ "{:g}".format(saving.interest_rate) }}%</dd>
+                </div>
+                {% endif %}
+                {% if maturity_date %}
+                <div>
+                    <dt>Maturity date</dt>
+                    <dd><time datetime="{{ saving.maturity_date }}">{{ maturity_date }}</time></dd>
+                </div>
+                {% endif %}
+            </dl>
+
+            <p class="delete-warning" id="delete-warning">This cannot be undone.</p>
+
+            <form method="POST" action="{{ url_for('delete_saving', id=saving.id) }}">
+                <button type="submit" class="btn-submit btn-danger" aria-describedby="delete-warning">Delete Saving</button>
+            </form>
+
+            <a class="btn-cancel" href="{{ url_for('profile') }}">Cancel</a>
+        </div>
+
+    </div>
+</section>
+{% endblock %}

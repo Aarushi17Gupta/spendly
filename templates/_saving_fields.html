@@ -1,0 +1,32 @@
+<div class="form-group">
+    <label for="paid_from">Paid from</label>
+    <select id="paid_from" name="paid_from" class="form-input" required>
+        <option value="" disabled {% if form.get('paid_from') not in paid_from_options %}selected{% endif %}>Select where it was paid from</option>
+        {% for option in paid_from_options %}
+        <option value="{{ option }}" {% if form.get('paid_from') == option %}selected{% endif %}>{{ option }}</option>
+        {% endfor %}
+    </select>
+</div>
+
+<div class="form-group">
+    <label for="institution">Institution or scheme <span class="label-optional">(optional)</span></label>
+    <input type="text" id="institution" name="institution"
+           class="form-input" placeholder="Bank or fund name"
+           maxlength="{{ max_institution_length }}"
+           value="{{ form.get('institution', '') }}">
+</div>
+
+<div class="form-group">
+    <label for="interest_rate">Interest rate (% per year) <span class="label-optional">(optional)</span></label>
+    <input type="number" id="interest_rate" name="interest_rate"
+           class="form-input" placeholder="7.1"
+           step="any" min="0" max="{{ max_interest_rate }}"
+           value="{{ form.get('interest_rate', '') }}">
+</div>
+
+<div class="form-group">
+    <label for="maturity_date">Maturity date <span class="label-optional">(optional)</span></label>
+    <input type="date" id="maturity_date" name="maturity_date"
+           class="form-input"
+           value="{{ form.get('maturity_date', '') }}">
+</div>

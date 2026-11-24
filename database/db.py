@@ -47,6 +47,21 @@ def init_db():
                 created_at  TEXT    DEFAULT (datetime('now')),
                 FOREIGN KEY (user_id) REFERENCES users(id)
             );
+
+            CREATE TABLE IF NOT EXISTS savings (
+                id            INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id       INTEGER NOT NULL,
+                amount        REAL    NOT NULL,
+                type          TEXT    NOT NULL,
+                date          TEXT    NOT NULL,
+                description   TEXT,
+                institution   TEXT,
+                interest_rate REAL,
+                maturity_date TEXT,
+                paid_from     TEXT    NOT NULL,
+                created_at    TEXT    DEFAULT (datetime('now')),
+                FOREIGN KEY (user_id) REFERENCES users(id)
+            );
         """)
 
 
@@ -141,6 +156,88 @@ def delete_credit(credit_id, user_id):
         cursor = conn.execute(
             "DELETE FROM credits WHERE id = ? AND user_id = ?",
             (credit_id, user_id),
+        )
+        return cursor.rowcount > 0
+
+
+def add_saving(
+    user_id,
+    amount,
+    type,
+    date,
+    paid_from,
+    description=None,
+    institution=None,
+    interest_rate=None,
+    maturity_date=None,
+):
+    with closing(get_db()) as conn, conn:
+        conn.execute(
+            "INSERT INTO savings (user_id, amount, type, date, paid_from, description, "
+            "institution, interest_rate, maturity_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                user_id,
+                amount,
+                type,
+                date,
+                paid_from,
+                description,
+                institution,
+                interest_rate,
+                maturity_date,
+            ),
+        )
+
+
+def get_saving(saving_id, user_id):
+    """Return the saving if it belongs to the user, else None."""
+    with closing(get_db()) as conn:
+        return conn.execute(
+            "SELECT * FROM savings WHERE id = ? AND user_id = ?",
+            (saving_id, user_id),
+        ).fetchone()
+
+
+def update_saving(
+    saving_id,
+    user_id,
+    amount,
+    type,
+    date,
+    paid_from,
+    description=None,
+    institution=None,
+    interest_rate=None,
+    maturity_date=None,
+):
+    """Update a user's saving; return whether a row was matched."""
+    with closing(get_db()) as conn, conn:
+        cursor = conn.execute(
+            "UPDATE savings SET amount = ?, type = ?, date = ?, paid_from = ?, "
+            "description = ?, institution = ?, interest_rate = ?, maturity_date = ? "
+            "WHERE id = ? AND user_id = ?",
+            (
+                amount,
+                type,
+                date,
+                paid_from,
+                description,
+                institution,
+                interest_rate,
+                maturity_date,
+                saving_id,
+                user_id,
+            ),
+        )
+        return cursor.rowcount > 0
+
+
+def delete_saving(saving_id, user_id):
+    """Delete a user's saving; return whether a row was deleted."""
+    with closing(get_db()) as conn, conn:
+        cursor = conn.execute(
+            "DELETE FROM savings WHERE id = ? AND user_id = ?",
+            (saving_id, user_id),
         )
         return cursor.rowcount > 0
 

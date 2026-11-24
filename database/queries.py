@@ -2,6 +2,15 @@ import datetime
 
 from database.db import get_db
 
+# The paid_from value for deposits made by the user rather than by salary deduction.
+OWN_ACCOUNT = "My account"
+
+
+def format_date(value):
+    """Format an ISO date for display, e.g. May 1, 2026."""
+    day = datetime.date.fromisoformat(value)
+    return f"{day:%B} {day.day}, {day.year}"
+
 
 def _user_date_filter(user_id, date_from=None, date_to=None):
     """Return a WHERE clause and its parameters for a user's date range."""
@@ -80,12 +89,11 @@ def get_recent_transactions(user_id, limit=10, date_from=None, date_to=None):
     conn.close()
     result = []
     for row in rows:
-        dt = datetime.datetime.strptime(row["date"], "%Y-%m-%d")
         result.append(
             {
                 "id": row["id"],
                 "date_iso": row["date"],
-                "date": dt.strftime("%B %-d, %Y"),
+                "date": format_date(row["date"]),
                 "description": row["description"] or "",
                 "category": row["category"],
                 "amount": row["amount"],
@@ -99,15 +107,8 @@ def get_recent_transactions(user_id, limit=10, date_from=None, date_to=None):
 # ------------------------------------------------------------------ #
 
 
-def get_category_breakdown(user_id, date_from=None, date_to=None):
-    where, params = _user_date_filter(user_id, date_from, date_to)
-    conn = get_db()
-    rows = conn.execute(
-        "SELECT category AS name, SUM(amount) AS amount "
-        "FROM expenses " + where + " GROUP BY category ORDER BY amount DESC",
-        params,
-    ).fetchall()
-    conn.close()
+def _with_percentages(rows):
+    """Add whole percentages that sum to 100 to name/amount rows."""
     if not rows:
         return []
     total = sum(r["amount"] for r in rows)
@@ -118,6 +119,18 @@ def get_category_breakdown(user_id, date_from=None, date_to=None):
         n, a, fl, rem = floors[i]
         floors[i] = (n, a, fl + 1, rem)
     return [{"name": n, "amount": a, "pct": p} for n, a, p, _ in floors]
+
+
+def get_category_breakdown(user_id, date_from=None, date_to=None):
+    where, params = _user_date_filter(user_id, date_from, date_to)
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT category AS name, SUM(amount) AS amount "
+        "FROM expenses " + where + " GROUP BY category ORDER BY amount DESC",
+        params,
+    ).fetchall()
+    conn.close()
+    return _with_percentages(rows)
 
 
 # ------------------------------------------------------------------ #
@@ -137,12 +150,11 @@ def get_recent_credits(user_id, limit=10, date_from=None, date_to=None):
     conn.close()
     result = []
     for row in rows:
-        day = datetime.date.fromisoformat(row["date"])
         result.append(
             {
                 "id": row["id"],
                 "date_iso": row["date"],
-                "date": f"{day:%B} {day.day}, {day.year}",
+                "date": format_date(row["date"]),
                 "description": row["description"] or "",
                 "source": row["source"],
                 "amount": row["amount"],
@@ -157,3 +169,69 @@ def count_credits(user_id, date_from=None, date_to=None):
     row = conn.execute("SELECT COUNT(*) FROM credits " + where, params).fetchone()
     conn.close()
     return row[0]
+
+
+# ------------------------------------------------------------------ #
+# Savings                                                             #
+# ------------------------------------------------------------------ #
+
+
+def _saving_details(row):
+    """Return the optional facts shown under a saving's description."""
+    details = []
+    if row["institution"]:
+        details.append(row["institution"])
+    if row["interest_rate"] is not None:
+        details.append(f"{row['interest_rate']:g}%")
+    if row["maturity_date"]:
+        details.append(f"Matures {format_date(row['maturity_date'])}")
+    if row["paid_from"] != OWN_ACCOUNT:
+        details.append(row["paid_from"])
+    return details
+
+
+def get_recent_savings(user_id, limit=10, date_from=None, date_to=None):
+    where, params = _user_date_filter(user_id, date_from, date_to)
+    params.append(limit)
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT id, date, description, type, amount, institution, interest_rate, "
+        "maturity_date, paid_from "
+        "FROM savings " + where + " ORDER BY date DESC, id DESC LIMIT ?",
+        params,
+    ).fetchall()
+    conn.close()
+    return [
+        {
+            **dict(row),
+            "date_iso": row["date"],
+            "date": format_date(row["date"]),
+            "description": row["description"] or "",
+            "details": _saving_details(row),
+        }
+        for row in rows
+    ]
+
+
+def get_savings_summary(user_id, date_from=None, date_to=None):
+    where, params = _user_date_filter(user_id, date_from, date_to)
+    conn = get_db()
+    row = conn.execute(
+        "SELECT COALESCE(SUM(amount), 0) AS total, COUNT(*) AS count "
+        "FROM savings " + where,
+        params,
+    ).fetchone()
+    conn.close()
+    return {"total": row["total"], "count": row["count"]}
+
+
+def get_savings_breakdown(user_id, date_from=None, date_to=None):
+    where, params = _user_date_filter(user_id, date_from, date_to)
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT type AS name, SUM(amount) AS amount "
+        "FROM savings " + where + " GROUP BY type ORDER BY amount DESC",
+        params,
+    ).fetchall()
+    conn.close()
+    return _with_percentages(rows)

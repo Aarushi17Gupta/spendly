@@ -19,8 +19,8 @@
 {% endif %}
 {% endmacro %}
 
-{# field is the row's grouping ("category" or "source"); noun prefixes the action labels. #}
-{% macro entry_table(rows, total, heading_id, field, edit_endpoint, delete_endpoint, noun='') %}
+{# field is the row's grouping ("category", "source" or "type"); noun prefixes the action labels. #}
+{% macro entry_table(rows, total, heading_id, field, edit_endpoint, delete_endpoint, noun='', show_details=false) %}
 {# Explicit roles keep table semantics when rows are stacked on mobile. #}
 <table class="tx-table" role="table" aria-labelledby="{{ heading_id }}">
     <thead role="rowgroup">
@@ -36,7 +36,7 @@
         {% for row in rows %}
         <tr role="row">
             <td role="cell" class="tx-date"><time datetime="{{ row.date_iso }}">{{ row.date }}</time></td>
-            <td role="cell" class="tx-desc{% if not row.description %} tx-desc--empty{% endif %}">{{ row.description or 'No description' }}</td>
+            <td role="cell" class="tx-desc{% if not row.description %} tx-desc--empty{% endif %}">{{ row.description or 'No description' }}{% if show_details and row.details %}<span class="tx-details">{{ row.details|join(' · ') }}</span>{% endif %}</td>
             {% if field == 'category' %}
             <td role="cell" class="tx-category"><span class="badge cat cat-{{ row.category|lower }}"><span class="cat-dot"></span>{{ row.category }}</span></td>
             {% else %}
@@ -74,6 +74,7 @@
         <div class="profile-actions">
             <a href="{{ url_for('add_expense') }}" class="btn-add-expense">+ Add Expense</a>
             <a href="{{ url_for('add_credit') }}" class="btn-add-expense btn-add-credit">+ Add Credit</a>
+            <a href="{{ url_for('add_saving') }}" class="btn-add-expense btn-add-credit">+ Add Saving</a>
         </div>
     </header>
 
@@ -95,6 +96,10 @@
         <div class="stat-card stat-card--total">
             <span class="stat-label">Total Spent</span>
             <span class="stat-value">{{ money(stats.total_spent) }}</span>
+        </div>
+        <div class="stat-card stat-card--saved">
+            <span class="stat-label">Total Saved</span>
+            <span class="stat-value">{{ money(savings_summary.total) }}</span>
         </div>
         <div class="stat-card">
             <span class="stat-label">Transactions</span>
@@ -146,6 +151,36 @@
         {{ empty_state('credit', 'add_credit') }}
         {% endif %}
     </section>
+
+    {% if savings %}
+    <div class="profile-grid">
+        <section class="profile-section" aria-labelledby="saving-heading">
+            <h2 class="section-title" id="saving-heading">Recent Savings</h2>
+            {{ entry_table(savings, savings_summary.count, 'saving-heading', 'type', 'edit_saving', 'delete_saving', noun='saving ', show_details=true) }}
+        </section>
+
+        <section class="profile-section" aria-labelledby="saving-type-heading">
+            <h2 class="section-title" id="saving-type-heading">Savings by Type</h2>
+            <ul class="category-list">
+                {% for item in savings_by_type %}
+                <li class="saving-type">
+                    <div class="category-head">
+                        <span class="category-name">{{ item.name }}</span>
+                        <span class="category-amt">{{ money(item.amount) }}</span>
+                        <span class="category-pct">{{ item.pct or '<1' }}%</span>
+                    </div>
+                    <svg class="category-bar" aria-hidden="true"><rect class="category-fill" width="{{ item.pct }}%" height="100%"/></svg>
+                </li>
+                {% endfor %}
+            </ul>
+        </section>
+    </div>
+    {% else %}
+    <section class="profile-section" aria-labelledby="saving-heading">
+        <h2 class="section-title" id="saving-heading">Recent Savings</h2>
+        {{ empty_state('saving', 'add_saving') }}
+    </section>
+    {% endif %}
 
 </div>
 {% endblock %}
