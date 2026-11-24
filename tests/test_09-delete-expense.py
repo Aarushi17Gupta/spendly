@@ -252,7 +252,7 @@ def test_profile_stats_and_breakdown_reflect_deletion(auth_client, user_id, expe
     response = auth_client.post(url(expense_id), follow_redirects=True)
     html = response.get_data(as_text=True)
     assert stat_value(html, "Total Spent") == "₹10.00"
-    assert stat_value(html, "Transactions") == "1"
+    assert stat_value(html, "Expenses") == "1"
     assert stat_value(html, "Top Category") == "Bills"
     assert '<span class="category-name">Food</span>' not in html
     assert '<span class="category-name">Bills</span>' in html

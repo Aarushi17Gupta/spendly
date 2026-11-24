@@ -43,6 +43,7 @@ from database.queries import (
     get_category_breakdown,
     get_recent_credits,
     count_credits,
+    get_net_summary,
     get_recent_savings,
     get_savings_breakdown,
     get_savings_summary,
@@ -395,6 +396,7 @@ def profile():
 
     credits = get_recent_credits(user_id, date_from=date_from, date_to=date_to)
     credit_count = count_credits(user_id, date_from=date_from, date_to=date_to)
+    net_summary = get_net_summary(user_id, date_from=date_from, date_to=date_to)
 
     savings = get_recent_savings(user_id, date_from=date_from, date_to=date_to)
     savings_summary = get_savings_summary(user_id, date_from=date_from, date_to=date_to)
@@ -410,6 +412,7 @@ def profile():
         categories=categories,
         credits=credits,
         credit_count=credit_count,
+        net_summary=net_summary,
         savings=savings,
         savings_summary=savings_summary,
         savings_by_type=savings_by_type,

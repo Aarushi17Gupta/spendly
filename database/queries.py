@@ -172,6 +172,32 @@ def count_credits(user_id, date_from=None, date_to=None):
 
 
 # ------------------------------------------------------------------ #
+# Net                                                                 #
+# ------------------------------------------------------------------ #
+
+
+def get_net_summary(user_id, date_from=None, date_to=None):
+    """Return the period's credits, expenses and the difference between them."""
+    where, params = _user_date_filter(user_id, date_from, date_to)
+    conn = get_db()
+    credits = conn.execute(
+        "SELECT COALESCE(SUM(amount), 0) FROM credits " + where, params
+    ).fetchone()[0]
+    spent = conn.execute(
+        "SELECT COALESCE(SUM(amount), 0) FROM expenses " + where, params
+    ).fetchone()[0]
+    conn.close()
+    # Subtracting rounded totals matches the cards and avoids negative zero.
+    total_credits = round(credits, 2)
+    total_spent = round(spent, 2)
+    return {
+        "total_credits": total_credits,
+        "total_spent": total_spent,
+        "net": round(total_credits - total_spent, 2),
+    }
+
+
+# ------------------------------------------------------------------ #
 # Savings                                                             #
 # ------------------------------------------------------------------ #
 
