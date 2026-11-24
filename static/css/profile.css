@@ -270,6 +270,29 @@
 
 .tx-edit:hover { color: var(--ink); }
 
+.tx-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    white-space: nowrap;
+}
+
+.tx-delete {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 32px;
+    min-height: 32px;
+    border-radius: var(--radius-sm);
+    color: var(--ink-muted);
+}
+
+.tx-delete:hover,
+.tx-delete:focus-visible {
+    background: var(--danger-light);
+    color: var(--danger);
+}
+
 /* Neutral pill; the dot carries the category colour. */
 .badge {
     display: inline-flex;
@@ -349,11 +372,17 @@
 }
 
 /* Five columns are tight just above the stacked and two-column breakpoints. */
-@media (max-width: 768px), (min-width: 1025px) and (max-width: 1150px) {
+@media (max-width: 768px), (min-width: 1025px) and (max-width: 1200px) {
     .tx-table th,
     .tx-table td { padding-inline: 0.4rem; }
 
     .tx-table .tx-date { white-space: normal; }
+}
+
+/* Keeps large amounts inside the card just above the stacked layout. */
+@media (max-width: 680px) {
+    .tx-table th,
+    .tx-table td { padding-inline: 0.2rem; }
 }
 
 @media (max-width: 600px) {
@@ -426,6 +455,13 @@
         min-width: 44px;
         min-height: 44px;
         justify-content: flex-end;
+    }
+
+    /* The negative margin aligns the icon, not its tap area, with the date. */
+    .tx-delete {
+        min-width: 44px;
+        min-height: 44px;
+        margin-right: -14px;
     }
 
     .tx-table .tx-date {

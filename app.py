@@ -17,6 +17,7 @@ from werkzeug.security import check_password_hash
 from database.db import (
     add_expense as db_add_expense,
     create_user,
+    delete_expense as db_delete_expense,
     get_db,
     get_expense,
     get_user_by_email,
@@ -302,7 +303,7 @@ def add_expense():
     return _render_expense_form({})
 
 
-# The bound is SQLite's largest integer; bigger ids get a 404, not an OverflowError.
+# Expense ids are bounded by SQLite's largest integer; bigger ids get a 404.
 @app.route("/expenses/<int(max=9223372036854775807):id>/edit", methods=["GET", "POST"])
 def edit_expense(id):
     user_id = _current_user_id()
@@ -342,9 +343,31 @@ def edit_expense(id):
     return _render_expense_form(form, "edit_expense.html", expense_id=id)
 
 
-@app.route("/expenses/<int:id>/delete")
+@app.route(
+    "/expenses/<int(max=9223372036854775807):id>/delete", methods=["GET", "POST"]
+)
 def delete_expense(id):
-    return "Delete expense — coming in Step 9"
+    user_id = _current_user_id()
+    if user_id is None:
+        return redirect(url_for("login"))
+
+    expense = get_expense(id, user_id)
+    if expense is None:
+        abort(404)
+
+    if request.method == "POST":
+        if not db_delete_expense(id, user_id):
+            abort(404)
+        flash("Expense deleted successfully.", "success")
+        return redirect(url_for("profile"))
+
+    day = datetime.date.fromisoformat(expense["date"])
+    return render_template(
+        "delete_expense.html",
+        expense=expense,
+        # Same format as the profile rows.
+        expense_date=f"{day:%B} {day.day}, {day.year}",
+    )
 
 
 if __name__ == "__main__":

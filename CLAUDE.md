@@ -99,7 +99,7 @@ pytest -s
 | `GET /profile` | Implemented — Steps 4–6 |
 | `GET/POST /expenses/add` | Implemented — Step 7 |
 | `GET/POST /expenses/<id>/edit` | Implemented — Step 8 |
-| `GET /expenses/<id>/delete` | Stub — Step 9 |
+| `GET/POST /expenses/<id>/delete` | Implemented — Step 9 |
 
 **Do not implement a stub route unless the active task explicitly targets that step.**
 
