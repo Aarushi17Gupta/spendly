@@ -1,3 +1,4 @@
+import calendar
 import datetime
 import math
 import os
@@ -43,6 +44,8 @@ from database.queries import (
     get_category_breakdown,
     get_recent_credits,
     get_available_summary,
+    get_category_months,
+    get_monthly_totals,
     get_recent_savings,
     get_savings_breakdown,
     get_savings_summary,
@@ -114,6 +117,10 @@ MAX_AMOUNT = 10_000_000  # ₹1 crore
 MAX_DESCRIPTION_LENGTH = 200
 MAX_INSTITUTION_LENGTH = 100
 MAX_INTEREST_RATE = 100
+
+# Analytics periods, keyed by the exact query parameter that selects them.
+MONTH_OPTIONS = {"3": 3, "6": 6, "12": 12}
+DEFAULT_MONTHS = 6
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "dev-secret")
@@ -276,6 +283,60 @@ def _render_saving_form(template, form, **context):
     )
 
 
+def _today():
+    """Return today's date; a separate function so tests can replace it."""
+    return datetime.date.today()
+
+
+def _month_range(months, today):
+    """Return the first and last day of the calendar months ending with today's."""
+    n = today.year * 12 + today.month - months
+    first = datetime.date(n // 12, n % 12 + 1, 1)
+    last = today.replace(day=calendar.monthrange(today.year, today.month)[1])
+    return first.isoformat(), last.isoformat()
+
+
+def _month_label(month):
+    """Format a YYYY-MM month for display, e.g. Jul 2026."""
+    return f"{datetime.date.fromisoformat(month + '-01'):%b %Y}"
+
+
+def _savings_rate_label(credits, saved):
+    """Return savings as a whole percentage of credits, rounding halves up."""
+    # Whole paise avoid float error at the rounding boundary.
+    credits_paise, saved_paise = round(credits * 100), round(saved * 100)
+    if not credits_paise:
+        return "—"
+    # Integer form of floor(saved / credits * 100 + 0.5).
+    pct = (200 * saved_paise + credits_paise) // (2 * credits_paise)
+    return "<1%" if saved_paise and not pct else f"{pct}%"
+
+
+def _analytics_summary(monthly):
+    """Return the analytics card values for a list of monthly totals."""
+    active = [
+        i
+        for i, m in enumerate(monthly)
+        if m["credits"] or m["spent"] or m["saved_from_account"]
+    ]
+    spent = sum(m["spent"] for m in monthly)
+    # Months before the user's first entry would understate the average.
+    average = 0.0
+    if active:
+        first_active = active[0]
+        average = round(spent / (len(monthly) - first_active), 2)
+    top = max(monthly, key=lambda m: (m["spent"], m["month"]))
+    return {
+        "average": average,
+        "highest": top if top["spent"] else None,
+        "rate": _savings_rate_label(
+            sum(m["credits"] for m in monthly),
+            sum(m["saved_from_account"] for m in monthly),
+        ),
+        "has_entries": bool(active),
+    }
+
+
 @app.context_processor
 def inject_current_user():
     user_id = session.get("user_id")
@@ -432,9 +493,26 @@ def profile():
 
 @app.route("/analytics")
 def analytics():
-    if _current_user_id() is None:
+    user_id = _current_user_id()
+    if user_id is None:
         return redirect(url_for("login"))
-    return render_template("analytics.html")
+
+    months = MONTH_OPTIONS.get(request.args.get("months"), DEFAULT_MONTHS)
+    date_from, date_to = _month_range(months, _today())
+    monthly = get_monthly_totals(user_id, date_from, date_to)
+    labels = {m["month"]: _month_label(m["month"]) for m in monthly}
+    period_label = f"{_month_label(date_from[:7])} – {_month_label(date_to[:7])}"
+
+    return render_template(
+        "analytics.html",
+        months=months,
+        month_options=MONTH_OPTIONS.values(),
+        monthly=monthly,
+        labels=labels,
+        period_label=period_label,
+        summary=_analytics_summary(monthly),
+        categories=get_category_months(user_id, date_from, date_to),
+    )
 
 
 @app.route("/expenses/add", methods=["GET", "POST"])

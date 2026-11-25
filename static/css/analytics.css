@@ -1,0 +1,180 @@
+/* ------------------------------------------------------------------ */
+/* Header, period links and cards                                      */
+/* ------------------------------------------------------------------ */
+
+.analytics-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.analytics-title {
+    font-family: var(--font-display);
+    font-size: 1.75rem;
+    font-weight: 400;
+    line-height: 1.2;
+    color: var(--ink);
+}
+
+.analytics-period { color: var(--ink-muted); }
+
+.period-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.period-links a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0 1rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--paper-card);
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--accent);
+}
+
+.period-links a:hover { background: var(--accent-light); }
+
+.period-links a[aria-current] {
+    border-color: var(--accent);
+    background: var(--accent);
+    color: var(--paper-card);
+}
+
+.analytics-notes .section-note,
+.analytics-cards .section-note { margin-top: 0; }
+
+.analytics-cards {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1.25rem;
+}
+
+.analytics-cards .stat-card { justify-content: flex-start; }
+
+/* ------------------------------------------------------------------ */
+/* Chart                                                               */
+/* ------------------------------------------------------------------ */
+
+.chart-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.25rem;
+    margin-bottom: 1rem;
+    list-style: none;
+    font-size: 0.875rem;
+    color: var(--ink-soft);
+}
+
+.chart-legend li {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.chart-swatch {
+    width: 12px;
+    height: 12px;
+    background: var(--tone);
+    forced-color-adjust: none;
+}
+
+.analytics-scroll {
+    max-width: 100%;
+    overflow-x: auto;
+}
+
+.analytics-scroll + .analytics-scroll { margin-top: 1.25rem; }
+
+.analytics-scroll:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+.analytics-chart {
+    display: block;
+    margin-inline: auto;
+}
+
+.chart-bar { fill: var(--tone); }
+
+.chart-bar:hover { opacity: 0.8; }
+
+.chart-axis { stroke: var(--border); }
+
+.chart-label {
+    fill: var(--ink-muted);
+    font-family: var(--font-body);
+    font-size: 12px;
+}
+
+/* ------------------------------------------------------------------ */
+/* Tables                                                              */
+/* ------------------------------------------------------------------ */
+
+.analytics-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.analytics-table th,
+.analytics-table td {
+    padding: 0.625rem 0.75rem;
+    border-bottom: 1px solid var(--border-soft);
+    text-align: right;
+    white-space: nowrap;
+    color: var(--ink-soft);
+}
+
+.analytics-table thead th {
+    border-bottom-color: var(--border);
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--ink-muted);
+}
+
+.analytics-table th:first-child {
+    position: sticky;
+    left: 0;
+    background: var(--paper-card);
+    text-align: left;
+    font-weight: 500;
+}
+
+.analytics-table tbody tr:last-child > * { border-bottom: none; }
+
+.analytics-table .analytics-total {
+    font-weight: 600;
+    color: var(--ink);
+}
+
+/* ------------------------------------------------------------------ */
+/* Responsive                                                          */
+/* ------------------------------------------------------------------ */
+
+@media (max-width: 900px) {
+    .analytics-cards { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 600px) {
+    .analytics-cards { gap: 1rem; }
+
+    .analytics-table th,
+    .analytics-table td { padding: 0.5rem; }
+
+    /* Leaves room to scroll beside the sticky column. */
+    .analytics-table th:first-child {
+        min-width: 5.5rem;
+        max-width: 8rem;
+        white-space: normal;
+        overflow-wrap: break-word;
+    }
+}

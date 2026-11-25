@@ -2,13 +2,6 @@
 /* Category colour tokens                                              */
 /* ------------------------------------------------------------------ */
 
-/* Entry-type colours: expenses red, savings green, credits blue */
-:root {
-    --tone-expense: var(--danger);
-    --tone-saving:  #2d7a45;
-    --tone-credit:  #2563a8;
-}
-
 :root {
     --cat-food:          #2d7a45;
     --cat-transport:     #2563a8;

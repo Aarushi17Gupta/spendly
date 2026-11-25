@@ -282,3 +282,90 @@ def get_savings_breakdown(user_id, date_from=None, date_to=None):
     ).fetchall()
     conn.close()
     return _with_percentages(rows)
+
+
+# ------------------------------------------------------------------ #
+# Analytics                                                           #
+# ------------------------------------------------------------------ #
+
+# Both queries round each row to paise before summing, so that the category
+# totals always add up to the monthly expenses.
+
+
+def _month_keys(date_from, date_to):
+    """Return every YYYY-MM from date_from to date_to, oldest first."""
+    first = datetime.date.fromisoformat(date_from)
+    last = datetime.date.fromisoformat(date_to)
+    start = first.year * 12 + first.month - 1
+    end = last.year * 12 + last.month - 1
+    return [f"{n // 12:04d}-{n % 12 + 1:02d}" for n in range(start, end + 1)]
+
+
+def get_monthly_totals(user_id, date_from, date_to):
+    """Return credits, expenses, own-account savings and what is left per month."""
+    where, params = _user_date_filter(user_id, date_from, date_to)
+    conn = get_db()
+    credit_rows = conn.execute(
+        "SELECT substr(date, 1, 7) AS month, SUM(ROUND(amount, 2)) AS total "
+        "FROM credits " + where + " GROUP BY substr(date, 1, 7)",
+        params,
+    ).fetchall()
+    expense_rows = conn.execute(
+        "SELECT substr(date, 1, 7) AS month, SUM(ROUND(amount, 2)) AS total "
+        "FROM expenses " + where + " GROUP BY substr(date, 1, 7)",
+        params,
+    ).fetchall()
+    saving_rows = conn.execute(
+        "SELECT substr(date, 1, 7) AS month, SUM(ROUND(amount, 2)) AS total "
+        "FROM savings " + where + " AND paid_from = ? GROUP BY substr(date, 1, 7)",
+        [*params, OWN_ACCOUNT],
+    ).fetchall()
+    conn.close()
+
+    credits, spent, saved = (
+        {row["month"]: round(row["total"], 2) for row in rows}
+        for rows in (credit_rows, expense_rows, saving_rows)
+    )
+    result = []
+    for month in _month_keys(date_from, date_to):
+        month_credits = credits.get(month, 0.0)
+        month_spent = spent.get(month, 0.0)
+        month_saved = saved.get(month, 0.0)
+        result.append(
+            {
+                "month": month,
+                "credits": month_credits,
+                "spent": month_spent,
+                "saved_from_account": month_saved,
+                # Subtracting rounded values avoids negative zero.
+                "available": round(
+                    round(month_credits - month_spent, 2) - month_saved, 2
+                ),
+            }
+        )
+    return result
+
+
+def get_category_months(user_id, date_from, date_to):
+    """Return each category's expenses per month and in total, largest first."""
+    keys = _month_keys(date_from, date_to)
+    where, params = _user_date_filter(user_id, date_from, date_to)
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT category AS name, substr(date, 1, 7) AS month, "
+        "SUM(ROUND(amount, 2)) AS total "
+        "FROM expenses " + where + " GROUP BY category, substr(date, 1, 7)",
+        params,
+    ).fetchall()
+    conn.close()
+
+    amounts = {}
+    for row in rows:
+        # A malformed stored date has no month column to belong to.
+        if row["month"] in keys:
+            amounts.setdefault(row["name"], {})[row["month"]] = round(row["total"], 2)
+    result = []
+    for name, by_month in amounts.items():
+        months = [by_month.get(key, 0.0) for key in keys]
+        result.append({"name": name, "total": round(sum(months), 2), "months": months})
+    return sorted(result, key=lambda item: (-item["total"], item["name"]))
