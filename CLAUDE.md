@@ -106,6 +106,7 @@ pytest -s
 | `GET/POST /savings/add` | Implemented — Step 12 |
 | `GET/POST /savings/<id>/edit` | Implemented — Step 12 |
 | `GET/POST /savings/<id>/delete` | Implemented — Step 12 |
+| `GET /analytics` | Implemented — Step 14 |
 
 **Do not implement a stub route unless the active task explicitly targets that step.**
 

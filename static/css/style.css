@@ -19,6 +19,11 @@
     --border: #e4e1da;
     --border-soft: #eeebe4;
 
+    /* Entry-type colours: expenses red, savings green, credits blue */
+    --tone-expense: var(--danger);
+    --tone-saving: #2d7a45;
+    --tone-credit: #2563a8;
+
     --font-display: 'DM Serif Display', Georgia, serif;
     --font-body: 'DM Sans', system-ui, sans-serif;
 
