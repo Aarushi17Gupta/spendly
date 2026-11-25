@@ -2,6 +2,13 @@
 /* Category colour tokens                                              */
 /* ------------------------------------------------------------------ */
 
+/* Entry-type colours: expenses red, savings green, credits blue */
+:root {
+    --tone-expense: var(--danger);
+    --tone-saving:  #2d7a45;
+    --tone-credit:  #2563a8;
+}
+
 :root {
     --cat-food:          #2d7a45;
     --cat-transport:     #2563a8;
@@ -168,16 +175,21 @@
 }
 
 .stat-card--total {
-    background: var(--accent);
-    border-color: var(--accent);
+    background: var(--danger-light);
+    border-color: var(--tone-expense);
 }
 
-.stat-card--total .stat-label { color: var(--accent-light); }
+.stat-card--total .stat-label { color: var(--ink-soft); }
 
 .stat-card--total .stat-value {
     font-size: clamp(2rem, 5vw, 2.75rem);
-    color: var(--paper-card);
+    color: var(--tone-expense);
 }
+
+.stat-card--saved .stat-value { color: var(--tone-saving); }
+
+/* Total Credits is the first card in this section. */
+.profile-available .stat-card:first-child .stat-value { color: var(--tone-credit); }
 
 .profile-available {
     display: grid;
@@ -371,6 +383,32 @@
     font-weight: 500;
     color: var(--ink);
 }
+
+.tone-expense { --tone: var(--tone-expense); }
+.tone-saving  { --tone: var(--tone-saving); }
+.tone-credit  { --tone: var(--tone-credit); }
+
+.profile-section[class*="tone-"] { border-top: 3px solid var(--tone); }
+
+.profile-section .tx-table .tx-amount,
+.profile-section .category-amt { color: var(--tone); }
+
+/* Also overrides the stacked rows' display: grid on mobile. */
+.tx-table tbody tr[hidden] { display: none; }
+
+.see-more {
+    margin-top: 0.75rem;
+    padding: 0.5rem 0;
+    border: none;
+    background: none;
+    font: inherit;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--tone);
+    cursor: pointer;
+}
+
+.see-more:hover { text-decoration: underline; }
 
 .category-pct {
     min-width: 2.75rem;

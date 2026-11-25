@@ -294,7 +294,7 @@ class TestProfileCreditsCard:
             assert '<span class="stat-label">' in card["html"]
             assert '<span class="stat-value">' in card["html"]
 
-    def test_twelve_credits_are_totalled_while_ten_are_listed(
+    def test_twelve_credits_are_totalled_and_listed(
         self, auth_client, user_id
     ):
         for _ in range(12):
@@ -304,8 +304,8 @@ class TestProfileCreditsCard:
         credits_html = re.search(
             r'<section[^>]*aria-labelledby="credit-heading".*?</section>', html, re.S
         ).group(0)
-        assert len(re.findall(r'class="tx-edit"', credits_html)) == 10
-        assert "Showing latest 10 of 12" in credits_html
+        assert len(re.findall(r'class="tx-edit"', credits_html)) == 12
+        assert "See more+" in credits_html
 
 
 # ---- Structure --------------------------------------------------------- #

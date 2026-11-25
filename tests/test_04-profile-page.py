@@ -107,10 +107,12 @@ def test_category_percentage_and_bar(client, user_id):
     assert 'class="cat cat-bills"' in html
 
 
-def test_capped_table_note(client, user_id):
+def test_long_table_has_see_more(client, user_id):
     for day in range(1, 13):
         add_expense(user_id, 5, "Food", f"2026-05-{day:02d}", "Tea")
-    assert "Showing latest 10 of 12" in get_html(client)
+    html = get_html(client)
+    assert html.count('class="tx-edit"') == 12
+    assert "See more+" in html
 
 
 def test_no_inline_styles_or_cdn_scripts(client, user_id):

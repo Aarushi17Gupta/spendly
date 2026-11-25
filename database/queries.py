@@ -80,11 +80,11 @@ def get_summary_stats(user_id, date_from=None, date_to=None):
 
 def get_recent_transactions(user_id, limit=10, date_from=None, date_to=None):
     where, params = _user_date_filter(user_id, date_from, date_to)
-    params.append(limit)
+    params.append(-1 if limit is None else limit)  # SQLite: -1 means no limit
     conn = get_db()
     rows = conn.execute(
         "SELECT id, date, description, category, amount "
-        "FROM expenses " + where + " ORDER BY date DESC LIMIT ?",
+        "FROM expenses " + where + " ORDER BY date DESC, id DESC LIMIT ?",
         params,
     ).fetchall()
     conn.close()
@@ -141,7 +141,7 @@ def get_category_breakdown(user_id, date_from=None, date_to=None):
 
 def get_recent_credits(user_id, limit=10, date_from=None, date_to=None):
     where, params = _user_date_filter(user_id, date_from, date_to)
-    params.append(limit)
+    params.append(-1 if limit is None else limit)  # SQLite: -1 means no limit
     conn = get_db()
     rows = conn.execute(
         "SELECT id, date, description, source, amount "
@@ -239,7 +239,7 @@ def _saving_details(row):
 
 def get_recent_savings(user_id, limit=10, date_from=None, date_to=None):
     where, params = _user_date_filter(user_id, date_from, date_to)
-    params.append(limit)
+    params.append(-1 if limit is None else limit)  # SQLite: -1 means no limit
     conn = get_db()
     rows = conn.execute(
         "SELECT id, date, description, type, amount, institution, interest_rate, "

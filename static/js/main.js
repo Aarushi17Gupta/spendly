@@ -47,3 +47,25 @@
         }
     });
 })();
+
+// ------------------------------------------------------------------ //
+// Profile: show only the latest entries until "See more+" is clicked  //
+// ------------------------------------------------------------------ //
+
+document.querySelectorAll('.see-more').forEach(function (button) {
+    const table = button.closest('section').querySelector('.tx-table');
+    const extraRows = Array.from(table.tBodies[0].rows).slice(Number(table.dataset.visibleRows));
+
+    function setExpanded(expanded) {
+        extraRows.forEach(row => { row.hidden = !expanded; });
+        button.setAttribute('aria-expanded', String(expanded));
+        button.textContent = expanded ? 'See less' : 'See more+';
+    }
+
+    button.addEventListener('click', function () {
+        setExpanded(button.getAttribute('aria-expanded') !== 'true');
+    });
+
+    setExpanded(false);
+    button.hidden = false;
+});
