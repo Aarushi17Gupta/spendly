@@ -42,7 +42,6 @@ from database.queries import (
     get_recent_transactions,
     get_category_breakdown,
     get_recent_credits,
-    count_credits,
     get_available_summary,
     get_recent_savings,
     get_savings_breakdown,
@@ -391,7 +390,7 @@ def profile():
 
     # ---- SA1: transactions list ----------------------------------- #
     transactions = get_recent_transactions(
-        user_id, date_from=date_from, date_to=date_to
+        user_id, limit=None, date_from=date_from, date_to=date_to
     )
     # ---- end SA1 ------------------------------------------------- #
 
@@ -399,13 +398,16 @@ def profile():
     categories = get_category_breakdown(user_id, date_from=date_from, date_to=date_to)
     # ---- end SA3 ------------------------------------------------- #
 
-    credits = get_recent_credits(user_id, date_from=date_from, date_to=date_to)
-    credit_count = count_credits(user_id, date_from=date_from, date_to=date_to)
+    credits = get_recent_credits(
+        user_id, limit=None, date_from=date_from, date_to=date_to
+    )
     available_summary = get_available_summary(
         user_id, date_from=date_from, date_to=date_to
     )
 
-    savings = get_recent_savings(user_id, date_from=date_from, date_to=date_to)
+    savings = get_recent_savings(
+        user_id, limit=None, date_from=date_from, date_to=date_to
+    )
     savings_summary = get_savings_summary(user_id, date_from=date_from, date_to=date_to)
     savings_by_type = get_savings_breakdown(
         user_id, date_from=date_from, date_to=date_to
@@ -418,7 +420,6 @@ def profile():
         transactions=transactions,
         categories=categories,
         credits=credits,
-        credit_count=credit_count,
         available_summary=available_summary,
         savings=savings,
         savings_summary=savings_summary,

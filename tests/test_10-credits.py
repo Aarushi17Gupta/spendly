@@ -856,24 +856,22 @@ def test_credits_newest_first_with_id_tiebreak(auth_client, user_id):
     assert order == sorted(order), "expected date DESC then id DESC"
 
 
-def test_ten_of_twelve_credits_note(auth_client, user_id):
+def test_twelve_credits_listed_behind_see_more(auth_client, user_id):
     for day in range(1, 13):
         insert(user_id, date=f"2026-05-{day:02d}", description=f"entry-{day:02d}")
     block = credits_section(auth_client)
-    assert block.count('class="tx-edit"') == 10
-    assert "Showing latest 10 of 12" in block
+    assert block.count('class="tx-edit"') == 12
+    assert "See more+" in block
     assert "entry-12" in block
-    assert "entry-03" in block
-    assert "entry-02" not in block
-    assert "entry-01" not in block
+    assert "entry-01" in block
 
 
-def test_no_note_when_ten_or_fewer_credits(auth_client, user_id):
-    for day in range(1, 11):
+def test_no_see_more_when_five_or_fewer_credits(auth_client, user_id):
+    for day in range(1, 6):
         insert(user_id, date=f"2026-05-{day:02d}")
     block = credits_section(auth_client)
-    assert block.count('class="tx-edit"') == 10
-    assert "Showing latest" not in block
+    assert block.count('class="tx-edit"') == 5
+    assert "See more+" not in block
 
 
 def test_users_see_only_their_own_credits(auth_client, user_id, other_id):
@@ -885,7 +883,7 @@ def test_users_see_only_their_own_credits(auth_client, user_id, other_id):
     assert "Theirs" not in html
     assert f'href="{edit_url(foreign)}"' not in html
     assert f'href="{delete_url(foreign)}"' not in html
-    assert "Showing latest" not in block
+    assert "See more+" not in block
 
 
 # ---- Profile: date filter and empty states ---------------------------- #
@@ -928,16 +926,16 @@ def test_single_sided_date_filter_applies_to_credits(
     assert not any(name in block for name in dropped)
 
 
-def test_date_filter_limits_the_credit_count_in_note(auth_client, user_id):
+def test_date_filter_limits_the_credits_listed(auth_client, user_id):
     for day in range(1, 13):
         insert(user_id, date=f"2026-05-{day:02d}", description=f"in-{day:02d}")
     for date in ("2026-04-01", "2026-04-02", "2026-06-20"):
         insert(user_id, date=date, description="outside")
     block = credits_section(auth_client, "?from=2026-05-01&to=2026-05-31")
-    assert "Showing latest 10 of 12" in block
+    assert block.count('class="tx-edit"') == 12
     assert "outside" not in block
     unfiltered = credits_section(auth_client)
-    assert "Showing latest 10 of 15" in unfiltered
+    assert unfiltered.count('class="tx-edit"') == 15
 
 
 def test_credits_empty_state_for_user_without_credits(auth_client, user_id):

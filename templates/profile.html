@@ -19,10 +19,12 @@
 {% endif %}
 {% endmacro %}
 
+{% set visible_rows = 5 %}
+
 {# field is the row's grouping ("category", "source" or "type"); noun prefixes the action labels. #}
-{% macro entry_table(rows, total, heading_id, field, edit_endpoint, delete_endpoint, noun='', show_details=false) %}
+{% macro entry_table(rows, heading_id, field, edit_endpoint, delete_endpoint, noun='', show_details=false) %}
 {# Explicit roles keep table semantics when rows are stacked on mobile. #}
-<table class="tx-table" role="table" aria-labelledby="{{ heading_id }}">
+<table class="tx-table" data-visible-rows="{{ visible_rows }}" role="table" aria-labelledby="{{ heading_id }}">
     <thead role="rowgroup">
         <tr role="row">
             <th scope="col" role="columnheader">Date</th>
@@ -53,8 +55,9 @@
         {% endfor %}
     </tbody>
 </table>
-{% if total > rows|length %}
-<p class="section-note">Showing latest {{ rows|length }} of {{ total }}</p>
+{% if rows|length > visible_rows %}
+{# Revealed by main.js, which collapses the table; without JS every row stays visible. #}
+<button type="button" class="see-more" aria-expanded="false" aria-describedby="{{ heading_id }}" hidden>See more+</button>
 {% endif %}
 {% endmacro %}
 
@@ -131,16 +134,16 @@
     </section>
 
     <div class="profile-grid">
-        <section class="profile-section" aria-labelledby="tx-heading">
+        <section class="profile-section tone-expense" aria-labelledby="tx-heading">
             <h2 class="section-title" id="tx-heading">Recent Expenses</h2>
             {% if transactions %}
-            {{ entry_table(transactions, stats.transaction_count, 'tx-heading', 'category', 'edit_expense', 'delete_expense') }}
+            {{ entry_table(transactions, 'tx-heading', 'category', 'edit_expense', 'delete_expense') }}
             {% else %}
             {{ empty_state('expense', 'add_expense') }}
             {% endif %}
         </section>
 
-        <section class="profile-section" aria-labelledby="cat-heading">
+        <section class="profile-section tone-expense" aria-labelledby="cat-heading">
             <h2 class="section-title" id="cat-heading">Expenses by Category</h2>
             {% if categories %}
             <ul class="category-list">
@@ -162,10 +165,10 @@
         </section>
     </div>
 
-    <section class="profile-section" aria-labelledby="credit-heading">
+    <section class="profile-section tone-credit" aria-labelledby="credit-heading">
         <h2 class="section-title" id="credit-heading">Recent Credits</h2>
         {% if credits %}
-        {{ entry_table(credits, credit_count, 'credit-heading', 'source', 'edit_credit', 'delete_credit', noun='credit ') }}
+        {{ entry_table(credits, 'credit-heading', 'source', 'edit_credit', 'delete_credit', noun='credit ') }}
         {% else %}
         {{ empty_state('credit', 'add_credit') }}
         {% endif %}
@@ -173,12 +176,12 @@
 
     {% if savings %}
     <div class="profile-grid">
-        <section class="profile-section" aria-labelledby="saving-heading">
+        <section class="profile-section tone-saving" aria-labelledby="saving-heading">
             <h2 class="section-title" id="saving-heading">Recent Savings</h2>
-            {{ entry_table(savings, savings_summary.count, 'saving-heading', 'type', 'edit_saving', 'delete_saving', noun='saving ', show_details=true) }}
+            {{ entry_table(savings, 'saving-heading', 'type', 'edit_saving', 'delete_saving', noun='saving ', show_details=true) }}
         </section>
 
-        <section class="profile-section" aria-labelledby="saving-type-heading">
+        <section class="profile-section tone-saving" aria-labelledby="saving-type-heading">
             <h2 class="section-title" id="saving-type-heading">Savings by Type</h2>
             <ul class="category-list">
                 {% for item in savings_by_type %}
@@ -195,7 +198,7 @@
         </section>
     </div>
     {% else %}
-    <section class="profile-section" aria-labelledby="saving-heading">
+    <section class="profile-section tone-saving" aria-labelledby="saving-heading">
         <h2 class="section-title" id="saving-heading">Recent Savings</h2>
         {{ empty_state('saving', 'add_saving') }}
     </section>
